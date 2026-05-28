@@ -109,7 +109,7 @@ def naive_token_count(text: str) -> int:
     return max(1, len(text) // CHARS_PER_TOKEN)
 
 
-def split_into_chunks(text: str, chunk_tokens: int = CHUNK_TOKENS, overlap_tokens: int = OVERLAP_TOKENS) -> list[str]:
+def split_into_chunks(text: str, chunk_tokens: int = 512, overlap_tokens: int = 64) -> list[str]:
     """
     Split text into overlapping chunks of approximately `chunk_tokens` tokens.
 
@@ -166,7 +166,7 @@ def split_into_chunks(text: str, chunk_tokens: int = CHUNK_TOKENS, overlap_token
     return [c for c in chunks if len(c) >= 50]
 
 
-def process_record(record: dict) -> list[dict]:
+def process_record(record: dict, chunk_tokens: int = 512, overlap_tokens: int = 64) -> list[dict]:
     """Clean and chunk a single JSONL record, returning a list of chunk dicts."""
     act_id = str(record.get("id", ""))
     title = record.get("title", "")
@@ -177,7 +177,7 @@ def process_record(record: dict) -> list[dict]:
     if not cleaned:
         return []
 
-    chunks = split_into_chunks(cleaned)
+    chunks = split_into_chunks(cleaned, chunk_tokens, overlap_tokens)
     return [
         {
             "act_id": act_id,
@@ -195,7 +195,7 @@ def process_record(record: dict) -> list[dict]:
     ]
 
 
-def process_file(input_path: Path, output_path: Path) -> tuple[int, int]:
+def process_file(input_path: Path, output_path: Path, chunk_tokens: int = 512, overlap_tokens: int = 64) -> tuple[int, int]:
     """Process a single JSONL file. Returns (acts_processed, chunks_written)."""
     acts = 0
     chunks_written = 0
@@ -213,7 +213,7 @@ def process_file(input_path: Path, output_path: Path) -> tuple[int, int]:
                 log.warning("Skipping invalid JSON line in %s", input_path)
                 continue
 
-            chunk_records = process_record(record)
+            chunk_records = process_record(record, chunk_tokens, overlap_tokens)
             for chunk in chunk_records:
                 fout.write(json.dumps(chunk, ensure_ascii=False) + "\n")
                 chunks_written += 1
@@ -240,10 +240,6 @@ def main() -> None:
     parser.add_argument("--overlap-tokens", type=int, default=OVERLAP_TOKENS, help="Overlap tokens between chunks")
     args = parser.parse_args()
 
-    global CHUNK_TOKENS, OVERLAP_TOKENS
-    CHUNK_TOKENS = args.chunk_tokens
-    OVERLAP_TOKENS = args.overlap_tokens
-
     input_path: Path = args.input
     output_dir: Path = args.output
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -263,9 +259,12 @@ def main() -> None:
     total_acts = 0
     total_chunks = 0
 
+    chunk_tokens = args.chunk_tokens
+    overlap_tokens = args.overlap_tokens
+
     for f in files:
         out_file = output_dir / f"chunks_{f.stem}.jsonl"
-        acts, chunks = process_file(f, out_file)
+        acts, chunks = process_file(f, out_file, chunk_tokens, overlap_tokens)
         total_acts += acts
         total_chunks += chunks
         log.info("  %s → %s (%d acts, %d chunks)", f.name, out_file.name, acts, chunks)
