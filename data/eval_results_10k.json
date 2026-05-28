@@ -1,0 +1,1270 @@
+{
+  "summary": {
+    "n_questions": 30,
+    "llm_used": false,
+    "avg_retrieval_score": 0.7054,
+    "avg_keyword_rate": 0.4443
+  },
+  "results": [
+    {
+      "id": 1,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi minimalny okres wypowiedzenia umowy o pracę zawartej na czas nieokreślony przy stażu pracy 3 lata?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.783,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "po otrzymaniu propozycji i informacji, o których mowa w\n ust. 2, uzgadnia wysokość minimalnego wynagrodzenia oraz ustala wysokość minimalnej\n stawki godzinowej, zgodnie z ust. 3a i 3b, w terminie 30 d"
+        },
+        {
+          "score": 0.739,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "umysłowo. 3. Urlop dodatkowy przysługujący funkcjonariuszowi z tytułu stażu służby wynosi: 1) 5 dni - dla funkcjonariusza, który pełni służbę co najmniej przez 10 lat; 2) 9 dni - dla funkcjonariusza, "
+        },
+        {
+          "score": 0.7226,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "okoliczności uzasadniających tę zmianę. 2. Jeżeli prawo do uposażenia powstało lub zmiana uposażenia nastąpiła w ciągu miesiąca,\n uposażenie na czas do końca miesiąca oblicza się w wysokości 1/30 częś"
+        },
+        {
+          "score": 0.7215,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "20 lat służby oraz każdych 5 lat służby po przekroczeniu 20 lat służby; 3) w służbie kandydackiej - nie później niż w ciągu 7 dni po ukończeniu kursu przygotowawczego\n oraz nie później niż w terminie "
+        },
+        {
+          "score": 0.7133,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "się do wezwania. §4. Stosownie do okoliczności komornik może wezwać pracodawcę do przekazywania mu zajętego\n wynagrodzenia bezpośrednio. Art.882. §1. Dokonując zajęcia wynagrodzenia za pracę, komornik"
+        }
+      ],
+      "retrieval_top_score": 0.783,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 2,
+      "category": "prawo_pracy",
+      "question": "Czy pracodawca może zwolnić pracownika w trakcie urlopu wypoczynkowego?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7666,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "i urlopu dodatkowego udziela się funkcjonariuszowi zgodnie z\n harmonogramem służby oraz rocznymi planami urlopów, biorąc pod uwagę wnioski funkcjonariuszy\n i konieczność zapewnienia normalnego funkcjo"
+        },
+        {
+          "score": 0.7014,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "go rozkładem czasu służby, w wymiarze godzinowym odpowiadającym\n dobowemu wymiarowi czasu służby funkcjonariusza w danym dniu. 2. Przy udzielaniu urlopu wypoczynkowego zgodnie z ust. 1 jeden dzień url"
+        },
+        {
+          "score": 0.6846,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "równocześnie\n wszczyna z urzędu egzekucję. Art.884. §1. Zajęcie obowiązuje nadal, choćby po zajęciu nawiązano z dłużnikiem nowy stosunek pracy\n lub zlecenia albo choćby zakład pracy przeszedł na inną "
+        },
+        {
+          "score": 0.6781,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 21 października 2024 r. w sprawie og",
+          "year": "2024",
+          "text": "w pracy z powodu niezdolności do\n pracy wskutek choroby albo konieczności osobistego sprawowania opieki nad dzieckiem\n lub chorym członkiem rodziny, za które pracownik samorządowy otrzymuje z tego tyt"
+        },
+        {
+          "score": 0.6684,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "służbowych - urlop wypoczynkowy lub urlop dodatkowy przesuwa się na termin późniejszy. 2. Urlopu wypoczynkowego lub urlopu dodatkowego w części niewykorzystanej z powodów,\n o których mowa w ust. 1 pkt"
+        }
+      ],
+      "retrieval_top_score": 0.7666,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 3,
+      "category": "handel",
+      "question": "Czy handel w niedzielę jest w Polsce zakazany i jakie są wyjątki?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6737,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "2018r. o ograniczeniu handlu w niedziele i święta oraz\n w niektóre inne dni\n, 4) pracodawcy delegujący pracowników na terytorium RP w zakresie określonym w \nustawie z dnia 10 czerwca 2016r. o delegowa"
+        },
+        {
+          "score": 0.5791,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "incydentu, który miał miejsce\n na terytorium Rzeczypospolitej Polskiej, lub zewnętrznego działania korygującego dotyczącego\n bezpieczeństwa, które zostało lub ma zostać podjęte na terytorium Rzeczypos"
+        },
+        {
+          "score": 0.5674,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "Europejskiego i Rady (UE) 2019/1020 z dnia\n 20 czerwca 2019r. w sprawie nadzoru rynku i zgodności produktów oraz zmieniającego\n dyrektywę 2004/42/WE oraz rozporządzenia (WE) nr 765/2008 i (UE) nr 305/"
+        },
+        {
+          "score": 0.5626,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o rachunkowości, ustawy o biegł",
+          "year": "2024",
+          "text": "jednostki dominującej zostały\n dopuszczone do obrotu na rynku regulowanym w Rzeczypospolitej Polskiej, w przypadku\n gdy atestacja taka została przeprowadzona na potrzeby atestacji sprawozdawczości zró"
+        },
+        {
+          "score": 0.5544,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "po dniu ogłoszenia, z wyjątkiem art. 8\n pkt 3 i 4 oraz art. 16 pkt 2, które wchodzą w życie z dniem 1 stycznia 2025r. ” . Załącznik -\n Tekst jednolity ustawy z dnia 25 czerwca 1999r. o Polskiej Organi"
+        }
+      ],
+      "retrieval_top_score": 0.6737,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 4,
+      "category": "handel",
+      "question": "Od kiedy obowiązuje ustawa o ograniczeniu handlu w niedzielę i święta?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7518,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.7401,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "14.00 w sobotę bezpośrednio poprzedzającą pierwszy dzień Wielkiej Nocy, powierza pracownikowi\n lub zatrudnionemu wykonywanie pracy w handlu lub wykonywanie czynności związanych\n z handlem; ” . Art.5. "
+        },
+        {
+          "score": 0.7054,
+          "title": "Ustawa z dnia 13 września 2024 r. o zmianie ustawy o ubezpieczeniach obowiązkowy",
+          "year": "2024",
+          "text": "w związku z ruchem tych pojazdów, zawartych przed dniem 23 grudnia\n 2023r. i obowiązujących na ten dzień, jeżeli zdarzenie zaistniało od tego dnia, stosuje\n się przepisy art. 36 ust. 1 ustawy zmienian"
+        },
+        {
+          "score": 0.6803,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "Ustawa\nz dnia 6 grudnia 2024r.\no zmianie ustawy o dniach wolnych od pracy oraz niektórych innych ustaw \n1)\nNiniejszą ustawą zmienia się ustawy: ustawę z dnia 26 czerwca 1974r. - Kodeks pracy,\n ustawę "
+        },
+        {
+          "score": 0.6741,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o rachunkowości, ustawy o biegł",
+          "year": "2024",
+          "text": "warunku określonego w tych przepisach uwzględnia\n się przychody netto ze sprzedaży towarów i produktów w rozumieniu art. 3 ust. 1 pkt\n 30a ustawy zmienianej w art. 1 osiągnięte w poprzednim roku obrot"
+        }
+      ],
+      "retrieval_top_score": 0.7518,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 5,
+      "category": "prawo_karne",
+      "question": "Jaka jest maksymalna kara pozbawienia wolności za kradzież w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7188,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": " w planie podziału według waluty\n obcej przeliczonej na walutę polską według kursu średniego ogłaszanego przez Narodowy\n Bank Polski z dnia sporządzenia planu podziału. Art.1025. §1. Z kwoty uzyskanej"
+        },
+        {
+          "score": 0.6863,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.6566,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.6485,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "karnego\n, z wyłączeniem informacji o przestępstwach, o których mowa w \nart. 240 § 1 ustawy z dnia 6 czerwca 1997r. - Kodeks karny\n. 19\n3)\nZe zmianą wprowadzoną przez art. 19 ustawy, o której mowa w od"
+        },
+        {
+          "score": 0.644,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "jedynie w\n postępowaniu zabezpieczającym. §2. Jurysdykcja krajowa w postępowaniu zabezpieczającym istnieje także wtedy, gdy zabezpieczenie\n może być wykonane w Rzeczypospolitej Polskiej lub wywołać sk"
+        }
+      ],
+      "retrieval_top_score": 0.7188,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 6,
+      "category": "prawo_cywilne",
+      "question": "Ile lat wynosi ogólny termin przedawnienia roszczeń majątkowych w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6884,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "Polskiej „Monitor Polski”, co najmniej na 7 dni roboczych przed najbliższym\n terminem waloryzacji, uwzględnianą od tego terminu kwotę miesięczną uprawniającą do\n świadczenia uzupełniającego, o której "
+        },
+        {
+          "score": 0.6815,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "po ukończeniu 15 roku życia, z wyjątkiem okresów pobierania stypendium\n przez osoby uczące się lub studiujące w systemie studiów dziennych. 3. Za okresy zatrudnienia i okresy pracy na obszarze Państwa"
+        },
+        {
+          "score": 0.6586,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "w ust. 1 pkt 1 lit. a, ustala ustawa budżetowa. 4. Polska Organizacja Turystyczna prowadzi rachunkowość według zasad określonych w przepisach\n o rachunkowości. 5. Rokiem obrotowym i podatkowym Polskie"
+        },
+        {
+          "score": 0.6531,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "okresu roku poprzedniego. 2d. Prezes Głównego Urzędu Statystycznego ogłasza, w terminie 15 dni po upływie trzeciego\n kwartału, w komunikacie, w Dzienniku Urzędowym Rzeczypospolitej Polskiej „Monitor\n "
+        },
+        {
+          "score": 0.6496,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        }
+      ],
+      "retrieval_top_score": 0.6884,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 7,
+      "category": "prawo_pracy",
+      "question": "Ile dni urlopu wypoczynkowego przysługuje pracownikowi ze stażem 10 lat?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8362,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "go rozkładem czasu służby, w wymiarze godzinowym odpowiadającym\n dobowemu wymiarowi czasu służby funkcjonariusza w danym dniu. 2. Przy udzielaniu urlopu wypoczynkowego zgodnie z ust. 1 jeden dzień url"
+        },
+        {
+          "score": 0.7741,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "i urlopu dodatkowego udziela się funkcjonariuszowi zgodnie z\n harmonogramem służby oraz rocznymi planami urlopów, biorąc pod uwagę wnioski funkcjonariuszy\n i konieczność zapewnienia normalnego funkcjo"
+        },
+        {
+          "score": 0.709,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "umysłowo. 3. Urlop dodatkowy przysługujący funkcjonariuszowi z tytułu stażu służby wynosi: 1) 5 dni - dla funkcjonariusza, który pełni służbę co najmniej przez 10 lat; 2) 9 dni - dla funkcjonariusza, "
+        },
+        {
+          "score": 0.694,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "wyznacza dniem służby sobotę następną. 2. O ustaleniu dnia wolnego od służby oraz o sobocie wyznaczonej dniem służby funkcjonariusza\n informuje się, w sposób przyjęty w jednostce organizacyjnej, co na"
+        },
+        {
+          "score": 0.6842,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "o czas od 20 minut 150 3.6 BPN 5.18. Skrócenie obowiązkowej przerwy w pracy w przypadku, gdy czas pracy wynosi powyżej\n 9 godzin: 1) o czas do mniej niż 15 minut 50 2) o czas od 15 minut do mniej niż "
+        }
+      ],
+      "retrieval_top_score": 0.8362,
+      "keyword_hits": 3,
+      "keyword_total": 3,
+      "keyword_rate": 1.0
+    },
+    {
+      "id": 8,
+      "category": "prawo_podatkowe",
+      "question": "Jaka jest podstawowa stawka VAT w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6199,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": " każdego podatnika kwalifikowany dochód (stratę) i skorygowane podatki kwalifikowane,\n z zastrzeżeniem art. 29 i art. 30; 2) jurysdykcyjny kwalifikowany dochód (stratę) netto oraz efektywną stawkę pod"
+        },
+        {
+          "score": 0.6071,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "zapłacony przez jednostkę dominującą\n zgodnie z jej udziałem procentowym w tej jednostce. Art.36. 1. Udział Rzeczypospolitej Polskiej oblicza się za każdy rok podatkowy według wzoru: 50 % współczynnik"
+        },
+        {
+          "score": 0.6019,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.5957,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.5658,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "z 2021r. poz. 1565\n)\n dopuszczonych do obrotu na terytorium Rzeczypospolitej Polskiej zgodnie z tą ustawą\n stosuje się stawkę podatku, o której mowa w art. 41 ust. 2. ” ; 2) w załączniku nr 3 do ustaw"
+        }
+      ],
+      "retrieval_top_score": 0.6199,
+      "keyword_hits": 3,
+      "keyword_total": 3,
+      "keyword_rate": 1.0
+    },
+    {
+      "id": 9,
+      "category": "prawo_administracyjne",
+      "question": "Ile dni ma organ administracji na wydanie decyzji administracyjnej w sprawie prostej?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7978,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "budownictwa, planowania i zagospodarowania przestrzennego oraz mieszkalnictwa. 5. Do egzekucji obowiązków wynikających z decyzji o udostępnieniu nieruchomości na cele\n badań i pomiarów stosuje się prz"
+        },
+        {
+          "score": 0.7924,
+          "title": "Ustawa z dnia 18 października 2024 r. o zmianie ustawy o udostępnianiu informacj",
+          "year": "2024",
+          "text": " 1 tej ustawy, wynosi\n 14 dni od dnia otrzymania ostatniej z informacji, o których mowa w ust. 2a. 3b. Minister właściwy do spraw gospodarki niezwłocznie informuje biuro o dacie załatwienia\n sprawy zg"
+        },
+        {
+          "score": 0.7891,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "przy czym zmiany w\n informacjach i dokumentach są wyraźnie oznaczone. 4. Do wniosku, o którym mowa w ust. 1, oraz do powiadomienia, o którym mowa w ust. 2\n i art. 71 rozporządzenia 2017/746, dołącza s"
+        },
+        {
+          "score": 0.7777,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "w ust. 1, niezwłocznie zawiadamia\n organ wyższego stopnia o złożeniu wniosku o wydanie decyzji o środowiskowych uwarunkowaniach\n oraz o wydaniu takiej decyzji. 3. Termin wydania decyzji, o której mowa"
+        },
+        {
+          "score": 0.7745,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "żądanie. 4. Odwołanie od decyzji administracyjnych, o których mowa w niniejszej ustawie, rozpatruje\n się w terminie 14 dni, z wyjątkiem decyzji, o których mowa w art. 3 ust. 1 i art.\n 18 ust. 1, od kt"
+        }
+      ],
+      "retrieval_top_score": 0.7978,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 10,
+      "category": "prawo_gospodarcze",
+      "question": "Jaki jest minimalny kapitał zakładowy spółki z ograniczoną odpowiedzialnością?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.674,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "działalność pomocniczą w stosunku do działalności prowadzonej przez\n jednostkę wyłączoną, lub - osiąga prawie cały dochód z dywidend wyłączonych, o których mowa w art. 43, lub z\n wyłączonych zysków (s"
+        },
+        {
+          "score": 0.658,
+          "title": "Obwieszczenie Ministra Sprawiedliwości z dnia 11 października 2024 r. w sprawie ",
+          "year": "2024",
+          "text": "w innym akcie notarialnym - maksymalna stawka wynosi 1/4 stawki przewidzianej w § 3. 2. Za sporządzenie aktu notarialnego dokumentującego: 1) oświadczenie o przystąpieniu do spółki z ograniczoną odpow"
+        },
+        {
+          "score": 0.6479,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "interesem bezpieczeństwa państwa, a tego interesu nie\n można zagwarantować w inny sposób, bądź jeżeli informacje te są objęte tajemnicą przedsiębiorstwa\n tego zamawiającego. Art.13. Zarząd Spółki Celo"
+        },
+        {
+          "score": 0.6466,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "posiadanym przez innych właścicieli niż jednostka dominująca,\n jest kwotą, którą można by przypisać takim właścicielom przy założeniu, że: 1) zysk netto nisko opodatkowanej jednostki składowej byłby r"
+        },
+        {
+          "score": 0.6453,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "lub inwestowaniu w tym środków pochodzących\n z pożyczek lub kredytów, na rzecz jednostek, o których mowa w pkt 1-6, lub b) prowadzą wyłącznie działalność pomocniczą w stosunku do działalności prowadzo"
+        }
+      ],
+      "retrieval_top_score": 0.674,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 11,
+      "category": "prawo_pracy",
+      "question": "Czym jest mobbing i jakie prawa ma pracownik będący ofiarą mobbingu?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.5529,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "3. Stosunek pracy z pracownikiem mianowanym wykonującym czynności kontrolne może zostać\n rozwiązany bez wypowiedzenia z jego winy w razie ciężkiego naruszenia podstawowych\n obowiązków pracowniczych al"
+        },
+        {
+          "score": 0.5225,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "o których mowa w ust. 3 oraz w\n art. 164 ust. 3, kierując się koniecznością korzystania przez funkcjonariusza z ochrony\n prawnej na wysokim poziomie, a także szybkiego zwrotu kosztów poniesionych prze"
+        },
+        {
+          "score": 0.5147,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "swoim własnym przykładem. Art.28. 1. Funkcjonariusze i pracownicy nie mogą uczestniczyć w takiej działalności, która podważa\n autorytet Służby Więziennej lub w której wykorzystuje się informacje o cha"
+        },
+        {
+          "score": 0.5041,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "jednostki\n organizacyjnej albo konwoju w szczególności związanego z przygotowywaniem, usiłowaniem\n lub dokonaniem zamachu terrorystycznego, napadem, buntem, zbiorową ucieczką osadzonych,\n najściem tłu"
+        },
+        {
+          "score": 0.4921,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "osoba doznająca przemocy domowej, miejsca pracy lub innego miejsca, w którym zwykle\n lub regularnie przebywa osoba doznająca przemocy domowej, i przebywania na tym terenie,\n rozstrzyga również o zabez"
+        }
+      ],
+      "retrieval_top_score": 0.5529,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 12,
+      "category": "prawo_cywilne",
+      "question": "Kiedy umowa sprzedaży nieruchomości wymaga formy aktu notarialnego?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7835,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "która jest\n objęta przepisami wydanymi na podstawie art. 28 ust. 1. 3. W przypadku, o którym mowa w ust. 2, gdy: 1) część nieruchomości pozostała po wykonaniu prawa pierwokupu nie nadaje się do prawid"
+        },
+        {
+          "score": 0.782,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "rzeczowych\n, 2) zawarciem umowy dzierżawy lub najmu nieruchomości gruntowej oraz umowy, która pozwala\n na realizację inwestycji na nieruchomości, również inwestycji o charakterze innym\n niż budowlanym"
+        },
+        {
+          "score": 0.7656,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "osobistym, przysługuje\n aż do trzeciego dnia przed licytacją prawo przejęcia nieruchomości na własność w cenie\n nie niższej od sumy oszacowania. Przy wniosku o przejęcie wnioskodawca powinien złożyć\n "
+        },
+        {
+          "score": 0.7591,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "się art. 982 z wynikającą z niniejszego przepisu zmianą co do ceny przejęcia. W wypadku\n gdy osoby określone w art. 982 nie skorzystają z prawa przejęcia nieruchomości rolnej,\n prawo to przysługuje ta"
+        },
+        {
+          "score": 0.7552,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "że wyzbycie się nieruchomości może znacząco\n utrudnić realizację zadań ustawowych właściwego organu lub jest niezasadne, przepisy\n \nart. 13-14 ustawy z dnia 20 lipca 2017r. o Krajowym Zasobie Nierucho"
+        }
+      ],
+      "retrieval_top_score": 0.7835,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 13,
+      "category": "prawo_rodzinne",
+      "question": "W jakim wieku w Polsce można zawrzeć związek małżeński?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7316,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "będący powodem jest obywatelem polskim i ma co najmniej od sześciu miesięcy\n bezpośrednio przed wszczęciem postępowania miejsce zamieszkania lub miejsce zwykłego\n pobytu w Rzeczypospolitej Polskiej, l"
+        },
+        {
+          "score": 0.6018,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "z uwzględnieniem\n ust. 5 i art. 183. 2. Wiek ubezpieczonego w dniu przejścia na emeryturę wyraża się w ukończonych latach\n i miesiącach. 3. Średnie dalsze trwanie życia ustala się wspólnie dla mężczyz"
+        },
+        {
+          "score": 0.5808,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "po ukończeniu 15 roku życia, z wyjątkiem okresów pobierania stypendium\n przez osoby uczące się lub studiujące w systemie studiów dziennych. 3. Za okresy zatrudnienia i okresy pracy na obszarze Państwa"
+        },
+        {
+          "score": 0.5755,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "terytorium Rzeczypospolitej Polskiej, jeżeli: - posiada obywatelstwo polskie albo - nie posiada obywatelstwa polskiego i prowadzi gospodarstwo domowe wspólnie z osobą\n posiadającą takie obywatelstwo, "
+        },
+        {
+          "score": 0.5444,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": " w Rzeczypospolitej Polskiej. §2. Jurysdykcja krajowa jest wyłączna, jeżeli osoba, której dotyczy wniosek o ubezwłasnowolnienie,\n jest obywatelem polskim, mającym miejsce zamieszkania i miejsce zwykłe"
+        }
+      ],
+      "retrieval_top_score": 0.7316,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 14,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi maksymalny czas pracy w tygodniu wraz z nadgodzinami?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7395,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "godzin pracy przypadającą do przepracowania przez pracownika w danym miesiącu w ramach\n pełnego wymiaru czasu pracy, a wysokością wynagrodzenia pracownika w danym miesiącu,\n obliczoną zgodnie z art. 6"
+        },
+        {
+          "score": 0.6985,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "go rozkładem czasu służby, w wymiarze godzinowym odpowiadającym\n dobowemu wymiarowi czasu służby funkcjonariusza w danym dniu. 2. Przy udzielaniu urlopu wypoczynkowego zgodnie z ust. 1 jeden dzień url"
+        },
+        {
+          "score": 0.6912,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "o czas od 20 minut 150 3.6 BPN 5.18. Skrócenie obowiązkowej przerwy w pracy w przypadku, gdy czas pracy wynosi powyżej\n 9 godzin: 1) o czas do mniej niż 15 minut 50 2) o czas od 15 minut do mniej niż "
+        },
+        {
+          "score": 0.6498,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "o którym mowa w art. 26c ust.\n 1 i 2 ustawy o czasie pracy kierowców\n4)\n, przez osoby niezatrudnione przez przedsiębiorcę, lecz osobiście wykonujące na jego\n rzecz przewozy drogowe: 1) do mniej niż 2 "
+        },
+        {
+          "score": 0.6373,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "po otrzymaniu propozycji i informacji, o których mowa w\n ust. 2, uzgadnia wysokość minimalnego wynagrodzenia oraz ustala wysokość minimalnej\n stawki godzinowej, zgodnie z ust. 3a i 3b, w terminie 30 d"
+        }
+      ],
+      "retrieval_top_score": 0.7395,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 15,
+      "category": "prawo_karne",
+      "question": "Co grozi za jazdę samochodem pod wpływem alkoholu w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.5549,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "wywołujące szkodę nastąpiło w Rzeczypospolitej Polskiej, a sprawa dotyczy\n ubezpieczenia odpowiedzialności cywilnej, ubezpieczenia nieruchomości albo ubezpieczenia\n nieruchomości i ruchomości, gdy pow"
+        },
+        {
+          "score": 0.5337,
+          "title": "Rozporządzenie Ministra Kultury i Dziedzictwa Narodowego z dnia 30 października ",
+          "year": "2024",
+          "text": "samochodów i wszystkich innych pojazdów niezbędnych do realizacji\n prac objętych wsparciem finansowym na produkcję audiowizualną albo na świadczenie\n usługi na rzecz produkcji audiowizualnej utworów a"
+        },
+        {
+          "score": 0.529,
+          "title": "Rozporządzenie Ministra Finansów z dnia 18 grudnia 2024 r. w sprawie zwolnień wy",
+          "year": "2024",
+          "text": "napoje alkoholowe będące mieszaniną\n piwa i napojów bezalkoholowych oraz cydr i perry o rzeczywistej objętościowej mocy\n alkoholu nieprzekraczającej 5,0% objętości 3 22072000 Alkohol etylowy i pozosta"
+        },
+        {
+          "score": 0.522,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "budżetową podległą ministrowi właściwemu do spraw\n zdrowia. 3. Siedzibą Centrum jest miasto stołeczne Warszawa. Art.8b. 1. Centrum realizuje zadania z zakresu: 1) profilaktyki i rozwiązywania problemó"
+        },
+        {
+          "score": 0.5206,
+          "title": "Ustawa z dnia 13 września 2024 r. o zmianie ustawy o ubezpieczeniach obowiązkowy",
+          "year": "2024",
+          "text": "szkód na osobie; 2) 6 021 600 złotych w odniesieniu do jednego zdarzenia, którego skutki są objęte ubezpieczeniem\n bez względu na liczbę poszkodowanych - w przypadku szkód w mieniu. ” ; 11) po art. 83"
+        }
+      ],
+      "retrieval_top_score": 0.5549,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 16,
+      "category": "ochrona_danych",
+      "question": "Jakie prawa przysługują osobie fizycznej na podstawie RODO w zakresie jej danych osobowych?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7344,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 września 2024 ",
+          "year": "2024",
+          "text": "fizycznej lub danych dotyczących zdrowia, seksualności lub\n orientacji seksualnej tej osoby, pod warunkiem że publikowanie wyników tych badań\n i prac następuje w sposób uniemożliwiający identyfikację "
+        },
+        {
+          "score": 0.6438,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "osób fizycznych\n lub w \nart. 4a pkt 12 ustawy o podatku dochodowym od osób prawnych\n, b) w przypadku osoby fizycznej - dowód tożsamości wystawiony przez upoważniony organ,\n który wskazuje tożsamość os"
+        },
+        {
+          "score": 0.6284,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "religijne, przynależność\n wyznaniową oraz danych o stanie zdrowia i życiu seksualnym; 2) danych osobowych innych osób, chyba że były one pracownikami lub funkcjonariuszami\n organów bezpieczeństwa pańs"
+        },
+        {
+          "score": 0.6267,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "prawo do posiadania majątku Skarbu\n Państwa oraz posiadania innych praw do majątku będącego własnością innych osób, wykorzystywanego\n dla celów statutowych wojewódzkich stacji krwiodawstwa, rejonowych"
+        },
+        {
+          "score": 0.6165,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "udzielenie informacji lub udostępnienie danych osobowych\n o osobie obecnie lub uprzednio pozbawionej wolności, a także prowadzenie ewidencji\n i dokumentowanie czynności w sprawie, mając na uwadze potr"
+        }
+      ],
+      "retrieval_top_score": 0.7344,
+      "keyword_hits": 3,
+      "keyword_total": 3,
+      "keyword_rate": 1.0
+    },
+    {
+      "id": 17,
+      "category": "prawo_budowlane",
+      "question": "Czy do budowy domu jednorodzinnego o powierzchni zabudowy do 70 m2 potrzebne jest pozwolenie na budowę?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.72,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "lokalu mieszkalnego\n lub domu jednorodzinnego na zasadach współwłasności w częściach ułamkowych w udziale\n niższym niż 1/4; 4) przystąpieniem do użytkowania wybudowanego własnego domu jednorodzinnego "
+        },
+        {
+          "score": 0.7119,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "(\nDz. U. z 2024r. poz. 1440\n)\n, 8) remontem lub przebudową lokalu mieszkalnego albo domu jednorodzinnego, wyłączonego\n z użytkowania na podstawie decyzji organu nadzoru budowlanego, o której mowa w \na"
+        },
+        {
+          "score": 0.6889,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": " b) spółdzielcze prawo do nie więcej niż jednego lokalu mieszkalnego albo domu jednorodzinnego\n wyłączonego z użytkowania na podstawie decyzji organu nadzoru budowlanego, o której\n mowa w \nart. 68 ust"
+        },
+        {
+          "score": 0.6642,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "własności nieruchomości gruntowej lub jej części w celu budowy na niej domu\n jednorodzinnego - w przypadku gdy zgromadzone na koncie albo lokacie środki pieniężne\n są wypłacane w celu pokrycia całości"
+        },
+        {
+          "score": 0.6544,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "przekroczyć wartości nieruchomości lub wartości prawa użytkowania wieczystego. 4. Podmiot, na rzecz którego ustanowiona została hipoteka, na żądanie organu ma obowiązek\n udzielenia informacji o składn"
+        }
+      ],
+      "retrieval_top_score": 0.72,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 18,
+      "category": "prawo_konsumenckie",
+      "question": "Ile dni ma konsument na odstąpienie od umowy zawartej przez internet?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7488,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "wynosi 30 dni od dnia poinformowania go o zawarciu umowy lub od dnia potwierdzenia\n informacji, o którym mowa w art. 39 ust. 3, jeżeli jest to termin późniejszy. Termin\n uważa się za zachowany, jeżeli"
+        },
+        {
+          "score": 0.6866,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "zapobieganie nadużyciom w komunikacji\n elektronicznej i ich zwalczanie, o których mowa w art. 3 ust. 1: 1) pkt 1 i 2 - w terminie 6 miesięcy od dnia wejścia w życie ustawy; 2) pkt 3 i 4 - w terminie 1"
+        },
+        {
+          "score": 0.676,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "poza lokalem przedsiębiorstwa podczas nieumówionej wizyty\n przedsiębiorcy w miejscu zamieszkania lub zwykłego pobytu konsumenta albo wycieczki,\n termin do odstąpienia od umowy wynosi 30 dni. Art.28. B"
+        },
+        {
+          "score": 0.6633,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "od umowy\n drogą elektroniczną, konsument może także odstąpić od umowy: 1) przy wykorzystaniu wzoru formularza odstąpienia od umowy, stanowiącego załącznik nr\n 2 do ustawy; 2) przez złożenie oświadczen"
+        },
+        {
+          "score": 0.6467,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "informacji\n w terminie 20 dni od dnia wystąpienia, jest obowiązany ponownie wystąpić o te informacje.\n W sytuacji nieotrzymania tych informacji w wyznaczonym terminie operator platformy\n jest obowiąza"
+        }
+      ],
+      "retrieval_top_score": 0.7488,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 19,
+      "category": "prawo_pracy",
+      "question": "Jakie informacje pracodawca musi podać w świadectwie pracy?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7421,
+          "title": "Obwieszczenie Ministra Zdrowia z dnia 25 września 2024 r. w sprawie ogłoszenia j",
+          "year": "2024",
+          "text": "PESEL); 3) dane identyfikacyjne podmiotu kierującego na badanie (nazwa, adres); 4) dane o zatrudnieniu osoby badanej (nazwa pracodawcy, adres, numer identyfikacyjny\n REGON) lub informacje o pobieraniu"
+        },
+        {
+          "score": 0.6891,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "do utrwalania obrazu lub dźwięku; 8) wykonywania niezbędnych dla celów kontroli odpisów lub wyciągów z dokumentów, jak\n również zestawień i obliczeń sporządzanych na podstawie dokumentów, a w razie po"
+        },
+        {
+          "score": 0.6702,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "lub oświadczeń dotyczących: a) zmiany imienia, nazwiska lub obywatelstwa, b) sytuacji materialnej i stanu majątku; 2) informacji niezbędnych do oceny spełniania warunków, o których mowa w ust. 1, doty"
+        },
+        {
+          "score": 0.6621,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "b) informacje umożliwiające identyfikację osoby, zawarte w dokumentach stwierdzających\n tożsamość lub innych dokumentach, c) informacje o udzieleniu widzenia lub wykonaniu innych czynności na terenie "
+        },
+        {
+          "score": 0.6579,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": " i ewidencji pracowników wykonujących\n prace w szczególnych warunkach lub o szczególnym charakterze Art.41. 1. Zakład prowadzi: 1) centralny rejestr stanowisk pracy, na których są wykonywane prace w s"
+        }
+      ],
+      "retrieval_top_score": 0.7421,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 20,
+      "category": "prawo_spadkowe",
+      "question": "Kto dziedziczy z ustawy w pierwszej kolejności w polskim prawie spadkowym?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7075,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.6889,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "należą rozpoznawane przez sąd rejestrowy sprawy\n o rozwiązanie osoby prawnej lub niebędącej osobą prawną jednostki organizacyjnej,\n jeżeli osoba prawna lub jednostka organizacyjna niebędąca osobą praw"
+        },
+        {
+          "score": 0.6841,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 6 grudnia 2024 r.",
+          "year": "2024",
+          "text": "wykonaniu na terytorium Rzeczypospolitej\n Polskiej, jeżeli w dniu nabycia ani nabywca, ani też spadkodawca lub darczyńca nie\n byli obywatelami polskimi i nie mieli miejsca stałego pobytu lub siedziby "
+        },
+        {
+          "score": 0.6779,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 11 grudnia 202",
+          "year": "2024",
+          "text": "2) § 23 ust. 1 i 2 rozporządzenia Ministra Spraw Wewnętrznych i Administracji z dnia\n 14 maja 1999r. w sprawie szczegółowego trybu postępowania Komisji Regulacyjnej do\n Spraw Polskiego Autokefaliczneg"
+        },
+        {
+          "score": 0.6752,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "w stosunku\n do wartości przedmiotu sporu; 5) przedmiotu sporu znajdującego się w Rzeczypospolitej Polskiej; 6) spadku po osobie, która w chwili śmierci miała miejsce zamieszkania lub miejsce zwykłego\n"
+        }
+      ],
+      "retrieval_top_score": 0.7075,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 21,
+      "category": "prawo_pracy",
+      "question": "Kiedy pracownikowi przysługuje odprawa przy zwolnieniu z przyczyn niedotyczących pracownika?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.791,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "3. Stosunek pracy z pracownikiem mianowanym wykonującym czynności kontrolne może zostać\n rozwiązany bez wypowiedzenia z jego winy w razie ciężkiego naruszenia podstawowych\n obowiązków pracowniczych al"
+        },
+        {
+          "score": 0.7686,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "która\n nie może być dokonana wcześniej niż po upływie trzech miesięcy; 2) likwidacji jednostki organizacyjnej Państwowej Inspekcji Pracy lub jej reorganizacji,\n jeżeli nie jest możliwe przeniesienie p"
+        },
+        {
+          "score": 0.7613,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "w roku kalendarzowym, wykonywanie innej pracy\n niż określona w akcie mianowania lub w umowie o pracę, zgodnej z jego kwalifikacjami.\n W okresie tym przysługuje mu wynagrodzenie stosowne do wykonywanej"
+        },
+        {
+          "score": 0.7491,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "równocześnie\n wszczyna z urzędu egzekucję. Art.884. §1. Zajęcie obowiązuje nadal, choćby po zajęciu nawiązano z dłużnikiem nowy stosunek pracy\n lub zlecenia albo choćby zakład pracy przeszedł na inną "
+        },
+        {
+          "score": 0.7345,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "z urlopu ojcowskiego albo jego części. Art.109. 1. Funkcjonariuszowi, którego stosunek służbowy ustał, wydaje się niezwłocznie świadectwo\n służby. 2. Funkcjonariusz może żądać sprostowania świadectwa "
+        }
+      ],
+      "retrieval_top_score": 0.791,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 22,
+      "category": "prawo_gospodarcze",
+      "question": "Jakie są obowiązki przedsiębiorcy wobec ZUS przy zatrudnieniu pierwszego pracownika?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6708,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 18 października 2",
+          "year": "2024",
+          "text": " nie są działalnością gospodarczą w rozumieniu\n przepisów \nustawy z dnia 6 marca 2018r. - Prawo przedsiębiorców\n, b) osobę fizyczną wykonującą zawód we własnym imieniu i na własny rachunek lub prowadz"
+        },
+        {
+          "score": 0.6318,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 18 października 2",
+          "year": "2024",
+          "text": " 13 ust. 2\n pkt 1; 2) przedsiębiorca przejmujący kontrolę - w przypadku, o którym mowa w art. 13 ust. 2\n pkt 2; 3) wspólnie wszyscy przedsiębiorcy biorący udział w utworzeniu wspólnego przedsiębiorcy\n"
+        },
+        {
+          "score": 0.6152,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 18 października 2",
+          "year": "2024",
+          "text": "przejęta kontrola lub jego przedsiębiorcy zależni sprawują kontrolę\n nad przedsiębiorcą wspólnie z innym przedsiębiorcą lub przedsiębiorcami, przepis ust.\n 3 pkt 1 stosuje się odpowiednio. 5. Jeżeli j"
+        },
+        {
+          "score": 0.602,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 18 października 2",
+          "year": "2024",
+          "text": "mowa w art. 13 ust. 1, obejmuje obrót zarówno przedsiębiorców bezpośrednio\n uczestniczących w koncentracji, jak i pozostałych przedsiębiorców należących do grup\n kapitałowych, do których należą przeds"
+        },
+        {
+          "score": 0.6006,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "innego przedsiębiorcy - osoby prowadzącej działalność\n gospodarczą, że spełnia wymóg dobrej reputacji, o którym mowa w art. 5c ust. 1 pkt\n 1; 3) dokumenty potwierdzające spełnienie warunku, o którym m"
+        }
+      ],
+      "retrieval_top_score": 0.6708,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 23,
+      "category": "prawo_administracyjne",
+      "question": "Co to jest decyzja administracyjna i jakie są jej obowiązkowe elementy?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7452,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 30 września 2024 ",
+          "year": "2024",
+          "text": "podmiotu, o którym mowa w art. 51 ust. 1, następuje w drodze decyzji\n administracyjnej, po przeprowadzeniu naboru na listę. 2\n97)\nZe zmianą wprowadzoną przez art. 9 pkt 41 ustawy, o której mowa w odno"
+        },
+        {
+          "score": 0.7398,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 30 września 2024 ",
+          "year": "2024",
+          "text": "zasięga opinii ministrów właściwych dla działów administracji\n rządowej, o których mowa w art. 52 ust. 2. Art.59. 1\n106)\nZe zmianą wprowadzoną przez art. 9 pkt 45 lit. a ustawy, o której mowa w odnośn"
+        },
+        {
+          "score": 0.7287,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "jego postanowienia, przepisy prawa powszechnie\n obowiązującego, wytyczne instytucji zarządzającej, o której mowa w art. 123 rozporządzenia\n 2021/2115, zwanej dalej „instytucją zarządzającą”, oraz regu"
+        },
+        {
+          "score": 0.7279,
+          "title": "Ustawa z dnia 19 listopada 2024 r. o zmianie ustawy o podatku rolnym, ustawy o p",
+          "year": "2024",
+          "text": "ze względu na złożenie zgłoszenia lub wniosku oraz 2) organowi podatkowemu właściwemu ze względu na siedzibę organu administracji publicznej\n lub podmiotu, który dokonał czynności urzędowej lub wydał "
+        },
+        {
+          "score": 0.7273,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "w drodze decyzji, udziela\n Spółce Celowej, zezwolenia na niezwłoczne zajęcie nieruchomości po wydaniu decyzji\n o ustaleniu lokalizacji w zakresie CPK. 3. Decyzji o niezwłocznym zajęciu nieruchomości n"
+        }
+      ],
+      "retrieval_top_score": 0.7452,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 24,
+      "category": "prawo_cywilne",
+      "question": "Czym różni się rękojmia od gwarancji przy zakupie towaru?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6993,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "skorzystania ze środków ochrony określonych w\n art. 43d; 5) z oświadczenia przedsiębiorcy lub okoliczności wyraźnie wynika, że nie doprowadzi\n on towaru do zgodności z umową w rozsądnym czasie lub bez"
+        },
+        {
+          "score": 0.6865,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "15 miesięcy od końca\n roku podatkowego, w którym taka jednostka nabyła prawo do tej ulgi, b) nabyła prawo wtórne do ulgi od innej osoby, jeżeli prawo to zostało nabyte od osoby\n niepowiązanej po cenie"
+        },
+        {
+          "score": 0.681,
+          "title": "Rozporządzenie Ministra Finansów z dnia 17 listopada 2024 r. w sprawie uznawania",
+          "year": "2024",
+          "text": "się i dolicza do ceny nabycia lub inaczej ustalonej wartości początkowej,\n wprowadzonych do ksiąg rachunkowych aktywów, zobowiązań lub składnika wycenianego\n zgodnie z art. 28 ust. 4 lub 8 ustawy. 5. "
+        },
+        {
+          "score": 0.68,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": " zgodnie z wymaganiami art. 12 ust. 1 pkt 9. Art.35. 1. Jeżeli konsument wykonuje prawo odstąpienia od umowy po zgłoszeniu żądania zgodnie\n z art. 15 ust. 3 i art. 21 ust. 2, ma obowiązek zapłaty za ś"
+        },
+        {
+          "score": 0.6745,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 6 grudnia 2024 r.",
+          "year": "2024",
+          "text": "nabywcy. Art.8. 1. Wartość nabytych rzeczy i praw majątkowych przyjmuje się w wysokości określonej przez\n nabywcę, jeżeli odpowiada ona wartości rynkowej tych rzeczy i praw, a wartość praw\n do wkładów"
+        }
+      ],
+      "retrieval_top_score": 0.6993,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 25,
+      "category": "prawo_karne",
+      "question": "Jaka jest różnica między przestępstwem a wykroczeniem w polskim prawie?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6915,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 26 września 2024 ",
+          "year": "2024",
+          "text": "Polskiej, za przestępstwa\n w dziedzinach określonych w art. 6 ust. 1 lit. a rozporządzenia (WE) nr 1071/2009\n w zakresie spełniania wymogu dobrej reputacji uznaje się przestępstwa odpowiadające\n znami"
+        },
+        {
+          "score": 0.6599,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "jedynie w\n postępowaniu zabezpieczającym. §2. Jurysdykcja krajowa w postępowaniu zabezpieczającym istnieje także wtedy, gdy zabezpieczenie\n może być wykonane w Rzeczypospolitej Polskiej lub wywołać sk"
+        },
+        {
+          "score": 0.655,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "karnego\n, z wyłączeniem informacji o przestępstwach, o których mowa w \nart. 240 § 1 ustawy z dnia 6 czerwca 1997r. - Kodeks karny\n. 19\n3)\nZe zmianą wprowadzoną przez art. 19 ustawy, o której mowa w od"
+        },
+        {
+          "score": 0.6549,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "Służby Więziennej następuje w razie stwierdzenia wygaśnięcia stosunku\n służbowego funkcjonariusza w przypadkach: 1) zrzeczenia się obywatelstwa polskiego; 2) skazania prawomocnym wyrokiem sądu na środ"
+        },
+        {
+          "score": 0.6408,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "podjęcie obrony pisma wszczynającego postępowanie; 4) strona w toku postępowania była pozbawiona możności obrony; 5) sprawa o to samo roszczenie między tymi samymi stronami zawisła w Rzeczypospolitej\n"
+        }
+      ],
+      "retrieval_top_score": 0.6915,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 26,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi minimalne wynagrodzenie za pracę w Polsce w 2024 roku?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7361,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "zapłacony przez jednostkę dominującą\n zgodnie z jej udziałem procentowym w tej jednostce. Art.36. 1. Udział Rzeczypospolitej Polskiej oblicza się za każdy rok podatkowy według wzoru: 50 % współczynnik"
+        },
+        {
+          "score": 0.6674,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "Polskiej „Monitor Polski”, co najmniej na 7 dni roboczych przed najbliższym\n terminem waloryzacji, uwzględnianą od tego terminu kwotę miesięczną uprawniającą do\n świadczenia uzupełniającego, o której "
+        },
+        {
+          "score": 0.6579,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "po ukończeniu 15 roku życia, z wyjątkiem okresów pobierania stypendium\n przez osoby uczące się lub studiujące w systemie studiów dziennych. 3. Za okresy zatrudnienia i okresy pracy na obszarze Państwa"
+        },
+        {
+          "score": 0.6271,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": "wynosi \n106,41 zł \n10)\nAktualną kwotę ogłasza Prezes Zakładu Ubezpieczeń Społecznych, w formie komunikatu,\n w Dzienniku Urzędowym Rzeczypospolitej Polskiej „Monitor Polski” na podstawie art.\n 94 ust. "
+        },
+        {
+          "score": 0.6177,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o rachunkowości, ustawy o biegł",
+          "year": "2024",
+          "text": "do atestacji\n sprawozdawczości zrównoważonego rozwoju - przeciętnego wynagrodzenia w gospodarce narodowej, ogłoszonego przez Prezesa Głównego\n Urzędu Statystycznego za poprzedni rok kalendarzowy, i st"
+        }
+      ],
+      "retrieval_top_score": 0.7361,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 27,
+      "category": "prawo_rodzinne",
+      "question": "Na czym polega instytucja rozdzielności majątkowej małżonków i jak ją ustanowić?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.5747,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "stanowiąca iloczyn dochodu\n z tytułu dywidendy i minimalnej stawki podatkowej, lub c) otrzymującym taką dywidendę jest osoba fizyczna, a otrzymana dywidenda jest dywidendą\n patronacką od spółdzielni z"
+        },
+        {
+          "score": 0.5674,
+          "title": "Ustawa z dnia 6 listopada 2024 r. o opodatkowaniu wyrównawczym jednostek składow",
+          "year": "2024",
+          "text": "które jednostka składowa kwalifikuje\n jako inwestycje długoterminowe, pozostałe aktywa niefinansowe lub inną pozycję aktywów,\n zgodnie z właściwym akceptowalnym standardem rachunkowości lub zatwierdzo"
+        },
+        {
+          "score": 0.5638,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "już własność współwłaścicieli\n i ich małżonków, a w miarę potrzeby także okoliczności przewidziane w \nart. 216 Kodeksu cywilnego\n. §2. Podział w naturze nastąpi po zasięgnięciu opinii biegłych co do s"
+        },
+        {
+          "score": 0.5555,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "domowego wspólnie z małżonkiem w lokalu mieszkalnym albo\n domu jednorodzinnym, którego prawo własności, albo do którego spółdzielcze prawo,\n małżonek ten nabył przed dniem zawarcia małżeństwa z kredyt"
+        },
+        {
+          "score": 0.5515,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": "w naturze, sąd dokonuje tego podziału na części odpowiadające\n wartością udziałom współwłaścicieli z uwzględnieniem wszelkich okoliczności zgodnie\n z interesem społeczno-gospodarczym. Różnice wartości"
+        }
+      ],
+      "retrieval_top_score": 0.5747,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 28,
+      "category": "ochrona_srodowiska",
+      "question": "Jakie kary grożą za nielegalne składowanie odpadów w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7147,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.7047,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 9 października 2024 r. w sprawie ogł",
+          "year": "2024",
+          "text": "Polskiej oraz opłat ponoszonych\n za usługi prawne świadczone przez Prokuratorię Generalną Rzeczypospolitej Polskiej,\n a także opłat za przeprowadzenie postępowania przed Sądem Polubownym przy Prokurat"
+        },
+        {
+          "score": 0.7038,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 10 października 2",
+          "year": "2024",
+          "text": " w planie podziału według waluty\n obcej przeliczonej na walutę polską według kursu średniego ogłaszanego przez Narodowy\n Bank Polski z dnia sporządzenia planu podziału. Art.1025. §1. Z kwoty uzyskanej"
+        },
+        {
+          "score": 0.6804,
+          "title": "Rozporządzenie Ministra Finansów z dnia 17 grudnia 2024 r. w sprawie zwolnień z ",
+          "year": "2024",
+          "text": "z przetwarzaniem pozostałych odpadów niebezpiecznych 16 PKWiU ex 38.22.2 Usługi związane z unieszkodliwianiem odpadów promieniotwórczych 17 PKWiU 39 Usługi związane z rekultywacją i pozostałe usługi z"
+        },
+        {
+          "score": 0.6692,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 11 października 2",
+          "year": "2024",
+          "text": " i 5,\n wynosi: 1) 500 zł \n25)\nAktualną kwotę ogłasza Prezes Zakładu Ubezpieczeń Społecznych, w formie komunikatu,\n w Dzienniku Urzędowym Rzeczypospolitej Polskiej „Monitor Polski” na podstawie art.\n 9"
+        }
+      ],
+      "retrieval_top_score": 0.7147,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 29,
+      "category": "prawo_budowlane",
+      "question": "Czym jest samowola budowlana i jakie są jej konsekwencje prawne?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.5882,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 14 listopada 2024",
+          "year": "2024",
+          "text": "i energii elektrycznej oraz urządzeń infrastruktury\n telekomunikacyjnej, a także innych podziemnych, naziemnych lub nadziemnych obiektów\n i urządzeń niezbędnych do korzystania z tych przewodów i urząd"
+        },
+        {
+          "score": 0.5848,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "architektów posiadającej\n uprawnienia budowlane do projektowania bez ograniczeń w specjalności architektonicznej\n albo uprawnienia budowlane do projektowania i kierowania robotami budowlanymi bez\n ogr"
+        },
+        {
+          "score": 0.5759,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": " b) spółdzielcze prawo do nie więcej niż jednego lokalu mieszkalnego albo domu jednorodzinnego\n wyłączonego z użytkowania na podstawie decyzji organu nadzoru budowlanego, o której\n mowa w \nart. 68 ust"
+        },
+        {
+          "score": 0.5705,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "Prawo budowlane\n, wydanej: a) w związku z katastrofą budowlaną lub ze skutkami powodzi, wiatru, osunięcia ziemi\n lub działania innego żywiołu lub b) co najmniej 12 miesięcy przed dniem złożenia wniosk"
+        },
+        {
+          "score": 0.5699,
+          "title": "Rozporządzenie Ministra Funduszy i Polityki Regionalnej z dnia 18 października 2",
+          "year": "2024",
+          "text": "projektu; 2) zakup nieruchomości niezabudowanych lub zabudowanych lub nabycie innego niż własność\n prawa do nieruchomości o wartości nie większej niż 10 % łącznych wydatków kwalifikowalnych\n projektu;"
+        }
+      ],
+      "retrieval_top_score": 0.5882,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 30,
+      "category": "prawo_gospodarcze",
+      "question": "Ile trwa postępowanie upadłościowe dla osoby fizycznej (upadłość konsumencka) w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.6261,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o rachunkowości, ustawy o biegł",
+          "year": "2024",
+          "text": "ustawą również od początku następnego\n roku obrotowego, jeżeli ich przychody netto ze sprzedaży towarów i produktów za poprzedni\n rok obrotowy są niższe niż równowartość w walucie polskiej 2 500 000 e"
+        },
+        {
+          "score": 0.6249,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "o drugie albo kolejne dziecko nastąpiło\n po dniu udzielenia rodzinnego kredytu mieszkaniowego; 4) kredytobiorca prowadzi gospodarstwo domowe na terytorium Rzeczypospolitej Polskiej; 5) umowa rodzinneg"
+        },
+        {
+          "score": 0.6242,
+          "title": "Ustawa z dnia 13 września 2024 r. o zmianie ustawy o ubezpieczeniach obowiązkowy",
+          "year": "2024",
+          "text": "którym spowodowano szkodę oraz ten zakład ubezpieczeń, wobec\n którego wszczęto postępowanie upadłościowe albo likwidacyjne, jego syndyka albo likwidatora,\n a także równoważny organ w innym niż Rzeczpo"
+        },
+        {
+          "score": 0.6178,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 7 listopada 2024 ",
+          "year": "2024",
+          "text": "Polskiej „Monitor Polski”, co najmniej na 7 dni roboczych przed najbliższym\n terminem waloryzacji, uwzględnianą od tego terminu kwotę miesięczną uprawniającą do\n świadczenia uzupełniającego, o której "
+        },
+        {
+          "score": 0.6173,
+          "title": "Obwieszczenie Marszałka Sejmu Rzeczypospolitej Polskiej z dnia 27 listopada 2024",
+          "year": "2024",
+          "text": "okresu roku poprzedniego. 2d. Prezes Głównego Urzędu Statystycznego ogłasza, w terminie 15 dni po upływie trzeciego\n kwartału, w komunikacie, w Dzienniku Urzędowym Rzeczypospolitej Polskiej „Monitor\n "
+        }
+      ],
+      "retrieval_top_score": 0.6261,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    }
+  ]
+}
