@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "lexcorpus"
+version = "0.1.0"
+description = "Polish Legal AI — fine-tuned RAG system over ISAP legal acts"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "LexCorpus Contributors" }]
+keywords = ["nlp", "legal-ai", "polish", "rag", "fine-tuning"]
+
+dependencies = [
+    "httpx>=0.27.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.2.0",
+    "tqdm>=4.66.0",
+    "datasets>=2.19.0",
+    "transformers>=4.41.0",
+    "peft>=0.11.0",
+    "bitsandbytes>=0.43.0",
+    "sentence-transformers>=3.0.0",
+    "qdrant-client>=1.9.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "accelerate>=0.30.0",
+    "torch>=2.2.0",
+    "rouge-score>=0.1.2",
+    "bert-score>=0.3.13",
+    "pydantic>=2.7.0",
+    "pyyaml>=6.0.1",
+    "tenacity>=8.3.0",
+    "anthropic>=0.28.0",
+    "python-dotenv>=1.0.1",
+    "scikit-learn>=1.4.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.29.0",
+    "pytest>=8.2.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+lexcorpus-fetch = "scripts.fetch_isap:main"
+lexcorpus-preprocess = "scripts.preprocess:main"
+lexcorpus-build = "scripts.build_dataset:main"
+lexcorpus-evaluate = "scripts.evaluate:main"
+lexcorpus-ingest = "rag.ingest:main"
+lexcorpus-api = "api.main:start"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*", "training*", "rag*", "api*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
