@@ -73,10 +73,10 @@ def score_answer(answer: str, question: dict) -> dict:
     }
 
 
-def call_claude(question: str, context: str, api_key: str) -> str:
-    import anthropic
+def call_openai(question: str, context: str, api_key: str, model: str = "gpt-4o") -> str:
+    from openai import OpenAI
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = OpenAI(api_key=api_key)
     system = (
         "Jesteś ekspertem ds. polskiego prawa. Odpowiadasz zwięźle i precyzyjnie po polsku. "
         "Powołujesz się na konkretne artykuły i akty prawne z podanego kontekstu."
@@ -88,13 +88,15 @@ def call_claude(question: str, context: str, api_key: str) -> str:
         f"ODPOWIEDŹ:"
     ) if context else f"PYTANIE: {question}\n\nODPOWIEDŹ:"
 
-    msg = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = client.chat.completions.create(
+        model=model,
         max_tokens=512,
-        system=system,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
     )
-    return msg.content[0].text.strip()
+    return response.choices[0].message.content.strip()
 
 
 def main() -> None:
@@ -115,10 +117,11 @@ def main() -> None:
     questions = load_questions(args.questions)
     log.info("Loaded %d questions", len(questions))
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o")
     use_llm = not args.no_llm and bool(api_key)
     if not use_llm and not args.no_llm:
-        log.warning("ANTHROPIC_API_KEY not set — running retrieval-only evaluation")
+        log.warning("OPENAI_API_KEY not set — running retrieval-only evaluation")
 
     results = []
     for q in questions:
@@ -134,7 +137,7 @@ def main() -> None:
         answer_scores = {}
         if use_llm:
             try:
-                answer = call_claude(q["question"], context, api_key)
+                answer = call_openai(q["question"], context, api_key, openai_model)
                 answer_scores = score_answer(answer, q)
                 time.sleep(0.5)  # gentle rate limit
             except Exception as exc:

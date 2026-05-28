@@ -51,14 +51,15 @@ QDRANT_PATH = os.getenv("QDRANT_PATH", "data/qdrant")  # local file path, or htt
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lexcorpus")
 LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
 _local_model = None
 _local_tokenizer = None
-_anthropic_client = None
+_openai_client = None
 
 
 def _init_retriever():
@@ -108,19 +109,19 @@ def _init_local_model():
     return _local_model, _local_tokenizer
 
 
-def _init_anthropic():
-    """Initialize the Anthropic client if API key is available."""
-    global _anthropic_client
-    if not ANTHROPIC_API_KEY:
+def _init_openai():
+    """Initialize the OpenAI client if API key is available."""
+    global _openai_client
+    if not OPENAI_API_KEY:
         return None
-    if _anthropic_client is not None:
-        return _anthropic_client
+    if _openai_client is not None:
+        return _openai_client
 
-    import anthropic
+    from openai import OpenAI
 
-    _anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    log.info("Anthropic client initialized")
-    return _anthropic_client
+    _openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    log.info("OpenAI client initialized (model: %s)", OPENAI_MODEL)
+    return _openai_client
 
 
 @asynccontextmanager
@@ -136,8 +137,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Pre-initialize local model if configured
     _init_local_model()
 
-    # Initialize Anthropic client
-    _init_anthropic()
+    # Initialize OpenAI client
+    _init_openai()
 
     log.info("LexCorpus API ready")
     yield
@@ -223,22 +224,24 @@ def generate_with_local_model(prompt: str, max_new_tokens: int = 512) -> str:
     return tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
 
 
-def generate_with_claude(prompt: str) -> str:
-    """Generate answer using Anthropic Claude API as fallback."""
-    client = _init_anthropic()
+def generate_with_openai(prompt: str) -> str:
+    """Generate answer using OpenAI API."""
+    client = _init_openai()
     if client is None:
         return (
             "Przepraszam, nie mogę wygenerować odpowiedzi — brak skonfigurowanego modelu językowego. "
-            "Ustaw zmienną środowiskową LOCAL_MODEL_PATH lub ANTHROPIC_API_KEY."
+            "Ustaw zmienną środowiskową LOCAL_MODEL_PATH lub OPENAI_API_KEY."
         )
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
     )
-    return message.content[0].text.strip()
+    return response.choices[0].message.content.strip()
 
 
 def generate_answer(prompt: str) -> tuple[str, str]:
@@ -251,10 +254,10 @@ def generate_answer(prompt: str) -> tuple[str, str]:
             answer = generate_with_local_model(prompt)
             return answer, LOCAL_MODEL_PATH or "local-model"
         except Exception as exc:
-            log.warning("Local model inference failed, falling back to Claude: %s", exc)
+            log.warning("Local model inference failed, falling back to OpenAI: %s", exc)
 
-    answer = generate_with_claude(prompt)
-    return answer, "claude-fallback"
+    answer = generate_with_openai(prompt)
+    return answer, OPENAI_MODEL
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
