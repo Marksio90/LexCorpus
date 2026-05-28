@@ -58,6 +58,7 @@ htmlcov/
 
 # Qdrant local storage
 qdrant_storage/
+data/qdrant/
 
 # Logs
 *.log

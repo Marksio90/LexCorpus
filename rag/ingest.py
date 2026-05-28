@@ -33,16 +33,23 @@ log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
 DEFAULT_COLLECTION = "lexcorpus"
-DEFAULT_QDRANT_URL = "http://localhost:6333"
+DEFAULT_QDRANT_PATH = "data/qdrant"  # local file-based storage, no Docker needed
 BATCH_SIZE = 64
 VECTOR_DIM = 1024  # mmlw-retrieval-roberta-large output dimension
 
 
-def get_qdrant_client(url: str, api_key: str | None = None) -> QdrantClient:
-    """Create a Qdrant client. Falls back to in-memory client if URL is ':memory:'."""
-    if url == ":memory:":
+def get_qdrant_client(path_or_url: str, api_key: str | None = None) -> QdrantClient:
+    """Create a Qdrant client.
+    - ':memory:' → in-memory (testing)
+    - starts with 'http' → remote server
+    - otherwise → local file path (no Docker needed)
+    """
+    if path_or_url == ":memory:":
         return QdrantClient(":memory:")
-    return QdrantClient(url=url, api_key=api_key, timeout=60)
+    if path_or_url.startswith("http"):
+        return QdrantClient(url=path_or_url, api_key=api_key, timeout=60)
+    Path(path_or_url).mkdir(parents=True, exist_ok=True)
+    return QdrantClient(path=path_or_url)
 
 
 def ensure_collection(client: QdrantClient, collection_name: str, vector_dim: int) -> None:
@@ -163,11 +170,11 @@ def main() -> None:
         help="Qdrant collection name",
     )
     parser.add_argument(
-        "--url",
-        default=DEFAULT_QDRANT_URL,
-        help="Qdrant server URL (use ':memory:' for in-memory mode)",
+        "--qdrant",
+        default=DEFAULT_QDRANT_PATH,
+        help="Qdrant storage: local path (default), ':memory:', or 'http://host:6333'",
     )
-    parser.add_argument("--api-key", default=None, help="Qdrant API key (for cloud)")
+    parser.add_argument("--api-key", default=None, help="Qdrant API key (cloud only)")
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
@@ -203,21 +210,17 @@ def main() -> None:
     vector_dim = model.get_sentence_embedding_dimension()
     log.info("Model loaded. Embedding dimension: %d", vector_dim)
 
-    log.info("Connecting to Qdrant at %s …", args.url)
-    client = get_qdrant_client(args.url, args.api_key)
+    log.info("Connecting to Qdrant (%s) …", args.qdrant)
+    client = get_qdrant_client(args.qdrant, args.api_key)
 
     ensure_collection(client, args.collection, vector_dim)
 
     n = ingest_chunks(chunks, model, client, args.collection, args.batch_size)
     log.info("Done. Upserted %d points into collection '%s'", n, args.collection)
 
-    # Print collection info
     info = client.get_collection(args.collection)
-    log.info(
-        "Collection stats: %d vectors, status=%s",
-        info.vectors_count,
-        info.status,
-    )
+    points_count = getattr(info, "points_count", None) or getattr(info, "vectors_count", "?")
+    log.info("Collection stats: %s points, status=%s", points_count, info.status)
 
 
 if __name__ == "__main__":

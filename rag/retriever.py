@@ -35,7 +35,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
 DEFAULT_COLLECTION = "lexcorpus"
-DEFAULT_QDRANT_URL = "http://localhost:6333"
+DEFAULT_QDRANT_PATH = "data/qdrant"
 DEFAULT_TOP_K = 5
 
 
@@ -82,12 +82,12 @@ class LegalRetriever:
         self,
         model_name: str = DEFAULT_MODEL,
         collection: str = DEFAULT_COLLECTION,
-        qdrant_url: str = DEFAULT_QDRANT_URL,
+        qdrant: str = DEFAULT_QDRANT_PATH,
         api_key: str | None = None,
     ) -> None:
         self.model_name = model_name
         self.collection = collection
-        self.qdrant_url = qdrant_url
+        self.qdrant = qdrant
         self.api_key = api_key
         self._model: SentenceTransformer | None = None
         self._client: QdrantClient | None = None
@@ -102,15 +102,15 @@ class LegalRetriever:
     @property
     def client(self) -> QdrantClient:
         if self._client is None:
-            log.info("Connecting to Qdrant at %s …", self.qdrant_url)
-            if self.qdrant_url == ":memory:":
+            log.info("Connecting to Qdrant (%s) …", self.qdrant)
+            if self.qdrant == ":memory:":
                 self._client = QdrantClient(":memory:")
+            elif self.qdrant.startswith("http"):
+                self._client = QdrantClient(url=self.qdrant, api_key=self.api_key, timeout=30)
             else:
-                self._client = QdrantClient(
-                    url=self.qdrant_url,
-                    api_key=self.api_key,
-                    timeout=30,
-                )
+                from pathlib import Path as _Path
+                _Path(self.qdrant).mkdir(parents=True, exist_ok=True)
+                self._client = QdrantClient(path=self.qdrant)
         return self._client
 
     def embed_query(self, query: str) -> list[float]:
@@ -166,14 +166,14 @@ class LegalRetriever:
             qmodels.Filter(must=filter_conditions) if filter_conditions else None
         )
 
-        search_results = self.client.search(
+        search_results = self.client.query_points(
             collection_name=self.collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
             query_filter=query_filter,
             score_threshold=score_threshold,
             with_payload=True,
-        )
+        ).points
 
         chunks = []
         for hit in search_results:
