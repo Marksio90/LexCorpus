@@ -118,7 +118,7 @@ def main() -> None:
     log.info("Loaded %d questions", len(questions))
 
     api_key = os.getenv("OPENAI_API_KEY")
-    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o")
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     use_llm = not args.no_llm and bool(api_key)
     if not use_llm and not args.no_llm:
         log.warning("OPENAI_API_KEY not set — running retrieval-only evaluation")
