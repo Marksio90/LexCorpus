@@ -47,7 +47,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── Configuration from environment ──────────────────────────────────────────
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_PATH = os.getenv("QDRANT_PATH", "data/qdrant")  # local file path, or http://... for server
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lexcorpus")
 LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
@@ -72,10 +72,10 @@ def _init_retriever():
     _retriever = LegalRetriever(
         model_name=EMBEDDING_MODEL,
         collection=QDRANT_COLLECTION,
-        qdrant_url=QDRANT_URL,
+        qdrant=QDRANT_PATH,
         api_key=QDRANT_API_KEY,
     )
-    log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_URL, QDRANT_COLLECTION)
+    log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
     return _retriever
 
 
@@ -233,7 +233,7 @@ def generate_with_claude(prompt: str) -> str:
         )
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
@@ -283,7 +283,7 @@ async def health() -> HealthResponse:
         retriever = _init_retriever()
         info = retriever.client.get_collection(QDRANT_COLLECTION)
         qdrant_ok = True
-        collection_count = info.vectors_count
+        collection_count = getattr(info, "points_count", None) or getattr(info, "vectors_count", None)
     except Exception as exc:
         log.warning("Qdrant health check failed: %s", exc)
 
