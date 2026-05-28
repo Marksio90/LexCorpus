@@ -1,0 +1,78 @@
+# LexCorpus — QLoRA Fine-Tuning Configuration
+# Base model: speakleash/Bielik-7B-Instruct-v0.1 (Polish instruction-tuned LLM)
+# Fallback: mistralai/Mistral-7B-Instruct-v0.3
+
+model:
+  base_model_id: "speakleash/Bielik-7B-Instruct-v0.1"
+  fallback_model_id: "mistralai/Mistral-7B-Instruct-v0.3"
+  torch_dtype: "float16"          # use bfloat16 on Ampere+ GPUs
+  trust_remote_code: true
+
+quantization:
+  load_in_4bit: true
+  bnb_4bit_compute_dtype: "float16"
+  bnb_4bit_quant_type: "nf4"      # NormalFloat4 — best for LLM weights
+  bnb_4bit_use_double_quant: true  # saves ~0.4 bits/param extra
+
+lora:
+  r: 16                            # LoRA rank
+  lora_alpha: 32                   # scaling factor (alpha/r = 2.0)
+  lora_dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+training:
+  output_dir: "./output/lexcorpus-lora"
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 8   # effective batch size = 2 * 8 = 16
+  gradient_checkpointing: true
+  optim: "paged_adamw_8bit"        # memory-efficient optimizer
+  learning_rate: 2.0e-4
+  weight_decay: 0.001
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  max_seq_length: 1024
+  fp16: true
+  bf16: false                      # set to true on Ampere+ and disable fp16
+  logging_steps: 10
+  eval_strategy: "steps"
+  eval_steps: 100
+  save_strategy: "steps"
+  save_steps: 200
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  report_to: "none"                # set to "wandb" or "tensorboard" if desired
+  dataloader_num_workers: 4
+  remove_unused_columns: false
+  group_by_length: true            # speeds up training by grouping similar-length sequences
+
+data:
+  dataset_path: "./data/dataset/instruction"
+  max_samples_train: null          # null = use all; set integer to subsample
+  max_samples_eval: 1000
+  prompt_template: |
+    ### Instrukcja:
+    {instruction}
+
+    ### Przepis:
+    {input}
+
+    ### Odpowiedź:
+    {output}
+
+merge:
+  # After training, merge LoRA weights into base model for easier deployment
+  merge_and_save: true
+  merged_output_dir: "./output/lexcorpus-merged"
