@@ -1,0 +1,1270 @@
+{
+  "summary": {
+    "n_questions": 30,
+    "llm_used": false,
+    "avg_retrieval_score": 0.7917,
+    "avg_keyword_rate": 0.1999
+  },
+  "results": [
+    {
+      "id": 1,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi minimalny okres wypowiedzenia umowy o pracę zawartej na czas nieokreślony przy stażu pracy 3 lata?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8094,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        },
+        {
+          "score": 0.8058,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.8049,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.8032,
+          "title": "Rozporządzenie Ministra Obrony Narodowej z dnia 20 grudnia 2024 r. zmieniające r",
+          "year": "2024",
+          "text": ": [\n \n ]\n }\n , { \n \"id\" : \"part_3\",\n \"title\" : \"Załącznik nr 2 - Wysokość równoważnika w zamian za przedmioty umundurowania i wyekwipowania polowego i ćwiczebnego niewydane w naturze\",\n \"type\": \"part\""
+        },
+        {
+          "score": 0.8031,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        }
+      ],
+      "retrieval_top_score": 0.8094,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 2,
+      "category": "prawo_pracy",
+      "question": "Czy pracodawca może zwolnić pracownika w trakcie urlopu wypoczynkowego?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7983,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.7782,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "może być nadal zatrudniony\n na tym stanowisku. §6. Rozporządzenie wchodzi w życie z dniem następującym po dniu ogłoszenia\n1)\nRozporządzenie zostało ogłoszone w dniu 7 lutego 2019r.\n. 1) Rozporządzenie"
+        },
+        {
+          "score": 0.7781,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "§ 1 pkt 2 rozporządzenia, o którym mowa w odnośniku 1.\n. Oddelegowany funkcjonariusz SKW w czasie oddelegowania podlega Szefowi SKW, a w zakresie\n wykonywanych zadań i obowiązków określonych w porozum"
+        },
+        {
+          "score": 0.777,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "2. Szef SKW odwołuje funkcjonariusza SKW z oddelegowania na jego pisemny wniosek. 3. W przypadku odwołania z oddelegowania lub upływu okresu, na który nastąpiło oddelegowanie,\n oddelegowany funkcjonar"
+        },
+        {
+          "score": 0.7737,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "zaliczonych do lekkiego stopnia niepełnosprawności. ” ; 2) w art. 46a w ust. 1 pkt 1 otrzymuje brzmienie: „ 1) na zadanie, o którym mowa w art. 26a - w wysokości do 30 % środków zaplanowanych na\n real"
+        }
+      ],
+      "retrieval_top_score": 0.7983,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 3,
+      "category": "handel",
+      "question": "Czy handel w niedzielę jest w Polsce zakazany i jakie są wyjątki?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8436,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.8208,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "14.00 w sobotę bezpośrednio poprzedzającą pierwszy dzień Wielkiej Nocy, powierza pracownikowi\n lub zatrudnionemu wykonywanie pracy w handlu lub wykonywanie czynności związanych\n z handlem; ” . Art.5. "
+        },
+        {
+          "score": 0.8131,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "Ustawa\nz dnia 6 grudnia 2024r.\no zmianie ustawy o dniach wolnych od pracy oraz niektórych innych ustaw \n1)\nNiniejszą ustawą zmienia się ustawy: ustawę z dnia 26 czerwca 1974r. - Kodeks pracy,\n ustawę "
+        },
+        {
+          "score": 0.8085,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": " ustawą zmienia się ustawy: ustawę z dnia 26 czerwca 1974r. - Kodeks pracy,\n ustawę z dnia 6 czerwca 1997r. - Kodeks karny oraz ustawę z dnia 10 stycznia 2018r.\n o ograniczeniu handlu w niedziele i św"
+        },
+        {
+          "score": 0.7613,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "\"pint_6\",\"type\": \"pint\",\"name\": \"6\",\"title\": \"6)\"}]},{\"id\": \"para_12-pass_2\",\"symbol\": \"pass_2\",\"type\": \"pass\",\"name\": \"2\",\"title\": \"2.\"}]},{\"id\": \"para_13\",\"symbol\": \"para_13\",\"type\": \"para\",\"name\": "
+        }
+      ],
+      "retrieval_top_score": 0.8436,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 4,
+      "category": "handel",
+      "question": "Od kiedy obowiązuje ustawa o ograniczeniu handlu w niedzielę i święta?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8622,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "14.00 w sobotę bezpośrednio poprzedzającą pierwszy dzień Wielkiej Nocy, powierza pracownikowi\n lub zatrudnionemu wykonywanie pracy w handlu lub wykonywanie czynności związanych\n z handlem; ” . Art.5. "
+        },
+        {
+          "score": 0.8421,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.8332,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": " ustawą zmienia się ustawy: ustawę z dnia 26 czerwca 1974r. - Kodeks pracy,\n ustawę z dnia 6 czerwca 1997r. - Kodeks karny oraz ustawę z dnia 10 stycznia 2018r.\n o ograniczeniu handlu w niedziele i św"
+        },
+        {
+          "score": 0.832,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "Ustawa\nz dnia 6 grudnia 2024r.\no zmianie ustawy o dniach wolnych od pracy oraz niektórych innych ustaw \n1)\nNiniejszą ustawą zmienia się ustawy: ustawę z dnia 26 czerwca 1974r. - Kodeks pracy,\n ustawę "
+        },
+        {
+          "score": 0.785,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "2, mogą zostać złożone od dnia 1 stycznia 2025r. Art.3. Ustawa wchodzi w życie z dniem następującym po dniu ogłoszenia, z mocą od dnia 1 lipca\n 2024r., z wyjątkiem art. 1 pkt 2, który wchodzi w życie "
+        }
+      ],
+      "retrieval_top_score": 0.8622,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 5,
+      "category": "prawo_karne",
+      "question": "Jaka jest maksymalna kara pozbawienia wolności za kradzież w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.76,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7553,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7533,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.7529,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": " banderole, oraz o terminie zdjęcia banderol\n i wydania wyrobów akcyzowych. 5. Zdjęcie banderol odbywa się w obecności kontrolującego upoważnionego do przeprowadzenia\n kontroli na podstawie upoważnien"
+        },
+        {
+          "score": 0.7527,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie danych zawa",
+          "year": "2024",
+          "text": "w aktualizacji uprzedniego powiadomienia informacji,\n o których mowa w § 2 ust. 1 pkt 3, 5-7 i 9-11, jeżeli informacje te zostały już ujęte\n w przedłożonym uprzednim powiadomieniu i jego aktualizacjac"
+        }
+      ],
+      "retrieval_top_score": 0.76,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 6,
+      "category": "prawo_cywilne",
+      "question": "Ile lat wynosi ogólny termin przedawnienia roszczeń majątkowych w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8312,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " błędów w tym terminie wniosek pozostawia się bez rozpatrzenia. §4. W terminie do dnia 31 sierpnia roku następującego po roku: 1) za który sporządzono wniosek lub korektę wniosku, 2) w którym złożono "
+        },
+        {
+          "score": 0.8264,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " budynków i\n budowli, które według stanu na dzień 31 grudnia roku poprzedzającego rok, w którym\n sporządzany jest wniosek, są zwolnione z tego podatku na podstawie \nart. 7 ust. 2 pkt 5a ustawy z dnia "
+        },
+        {
+          "score": 0.8177,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        },
+        {
+          "score": 0.8165,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.8155,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie danych zawa",
+          "year": "2024",
+          "text": "w aktualizacji uprzedniego powiadomienia informacji,\n o których mowa w § 2 ust. 1 pkt 3, 5-7 i 9-11, jeżeli informacje te zostały już ujęte\n w przedłożonym uprzednim powiadomieniu i jego aktualizacjac"
+        }
+      ],
+      "retrieval_top_score": 0.8312,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 7,
+      "category": "prawo_pracy",
+      "question": "Ile dni urlopu wypoczynkowego przysługuje pracownikowi ze stażem 10 lat?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7695,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        },
+        {
+          "score": 0.7678,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "wchodzi w życie po upływie 14 dni od dnia ogłoszenia. ” . Załącznik -\n Rozporządzenie Prezesa Rady Ministrów z dnia 6 lutego 2019r. w sprawie wykazu stanowisk,\n wymaganych kwalifikacji oraz zasad wyna"
+        },
+        {
+          "score": 0.764,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "§ 1 pkt 2 rozporządzenia, o którym mowa w odnośniku 1.\n. Oddelegowany funkcjonariusz SKW w czasie oddelegowania podlega Szefowi SKW, a w zakresie\n wykonywanych zadań i obowiązków określonych w porozum"
+        },
+        {
+          "score": 0.7595,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "może być nadal zatrudniony\n na tym stanowisku. §6. Rozporządzenie wchodzi w życie z dniem następującym po dniu ogłoszenia\n1)\nRozporządzenie zostało ogłoszone w dniu 7 lutego 2019r.\n. 1) Rozporządzenie"
+        },
+        {
+          "score": 0.7593,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        }
+      ],
+      "retrieval_top_score": 0.7695,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 8,
+      "category": "prawo_podatkowe",
+      "question": "Jaka jest podstawowa stawka VAT w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7674,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7619,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": " ]\n }\n , { \n \"id\" : \"part_2\",\n \"title\" : \"Załącznik nr 1 - Wysokość równoważnika wypłacanego w zamian za przedmioty ubioru wyjściowego i służbowego policjantowi mianowanemu na stałe (W ZŁ)\",\n \"type\": "
+        },
+        {
+          "score": 0.7536,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": "\"para_4-pint_2\",\"symbol\": \"pint_2\",\"type\": \"pint\",\"name\": \"2\",\"title\": \"2)\"}]},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\",\"type\":"
+        },
+        {
+          "score": 0.7469,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.746,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " budynków i\n budowli, które według stanu na dzień 31 grudnia roku poprzedzającego rok, w którym\n sporządzany jest wniosek, są zwolnione z tego podatku na podstawie \nart. 7 ust. 2 pkt 5a ustawy z dnia "
+        }
+      ],
+      "retrieval_top_score": 0.7674,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 9,
+      "category": "prawo_administracyjne",
+      "question": "Ile dni ma organ administracji na wydanie decyzji administracyjnej w sprawie prostej?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7985,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " budynków i\n budowli, które według stanu na dzień 31 grudnia roku poprzedzającego rok, w którym\n sporządzany jest wniosek, są zwolnione z tego podatku na podstawie \nart. 7 ust. 2 pkt 5a ustawy z dnia "
+        },
+        {
+          "score": 0.7943,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        },
+        {
+          "score": 0.7938,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.7915,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " błędów w tym terminie wniosek pozostawia się bez rozpatrzenia. §4. W terminie do dnia 31 sierpnia roku następującego po roku: 1) za który sporządzono wniosek lub korektę wniosku, 2) w którym złożono "
+        },
+        {
+          "score": 0.7899,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "1 pkt 2-8, są okazywane właściwemu naczelnikowi\n urzędu skarbowego w sprawach znaków akcyzy przed wydaniem decyzji, o której mowa w\n art. 126 ust. 1 ustawy. Dokumenty, o których mowa w ust. 1, powinny"
+        }
+      ],
+      "retrieval_top_score": 0.7985,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 10,
+      "category": "prawo_gospodarcze",
+      "question": "Jaki jest minimalny kapitał zakładowy spółki z ograniczoną odpowiedzialnością?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7746,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie danych zawa",
+          "year": "2024",
+          "text": "(UE) nr 904/2010 w odniesieniu do współpracy administracyjnej\n i wymiany informacji do celów monitorowania i prawidłowego stosowania procedury szczególnej\n dla małych przedsiębiorstw (Dz. Urz. UE L 62"
+        },
+        {
+          "score": 0.7719,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7615,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": "\"para_4-pint_2\",\"symbol\": \"pint_2\",\"type\": \"pint\",\"name\": \"2\",\"title\": \"2)\"}]},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\",\"type\":"
+        },
+        {
+          "score": 0.7588,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7563,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o Funduszu Ochrony Rolnictwa or",
+          "year": "2024",
+          "text": "opracowanym przez Krajowy Ośrodek i udostępnionym na jego stronie podmiotowej, roczne\n deklaracje o wysokości naliczonych wpłat na Fundusz, które zawierają: 1) imię, nazwisko, miejsce zamieszkania i a"
+        }
+      ],
+      "retrieval_top_score": 0.7746,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 11,
+      "category": "prawo_pracy",
+      "question": "Czym jest mobbing i jakie prawa ma pracownik będący ofiarą mobbingu?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7643,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.7624,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "zaliczonych do lekkiego stopnia niepełnosprawności. ” ; 2) w art. 46a w ust. 1 pkt 1 otrzymuje brzmienie: „ 1) na zadanie, o którym mowa w art. 26a - w wysokości do 30 % środków zaplanowanych na\n real"
+        },
+        {
+          "score": 0.7593,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "Ustawa\nz dnia 5 grudnia 2024r.\no zmianie ustawy o rehabilitacji zawodowej i społecznej oraz zatrudnianiu osób niepełnosprawnych Treść ustawy Art.1. W \nustawie z dnia 27 sierpnia 1997r. o rehabilitacji"
+        },
+        {
+          "score": 0.7545,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o Funduszu Ochrony Rolnictwa or",
+          "year": "2024",
+          "text": "wskazanie członków tej grupy, od których te produkty zostały nabyte, z podaniem ich\n imion i nazwisk albo nazw, d) wykaz dokumentów potwierdzających nabycie przez tę grupę produktów rolnych, o którym\n"
+        },
+        {
+          "score": 0.7505,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "§ 1 pkt 2 rozporządzenia, o którym mowa w odnośniku 1.\n. Oddelegowany funkcjonariusz SKW w czasie oddelegowania podlega Szefowi SKW, a w zakresie\n wykonywanych zadań i obowiązków określonych w porozum"
+        }
+      ],
+      "retrieval_top_score": 0.7643,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 12,
+      "category": "prawo_cywilne",
+      "question": "Kiedy umowa sprzedaży nieruchomości wymaga formy aktu notarialnego?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7707,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "1 pkt 2-8, są okazywane właściwemu naczelnikowi\n urzędu skarbowego w sprawach znaków akcyzy przed wydaniem decyzji, o której mowa w\n art. 126 ust. 1 ustawy. Dokumenty, o których mowa w ust. 1, powinny"
+        },
+        {
+          "score": 0.7691,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "kartoteki budynków\n lub kartoteki lokali; 6) numer pozycji kartoteki budynków lub kartoteki lokali; 7) datę sporządzenia dokumentu; 8) nazwisko i imię osoby, która sporządziła dokument, albo adnotacje"
+        },
+        {
+          "score": 0.7663,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.7652,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "§8. 1. Wnioskodawca, składając wniosek o wydanie banderol podatkowych lub o sprzedaż banderol\n legalizacyjnych oraz o wydanie upoważnienia do odbioru banderol do właściwego naczelnika\n urzędu skarbowe"
+        },
+        {
+          "score": 0.7592,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        }
+      ],
+      "retrieval_top_score": 0.7707,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 13,
+      "category": "prawo_rodzinne",
+      "question": "W jakim wieku w Polsce można zawrzeć związek małżeński?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7624,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "2, mogą zostać złożone od dnia 1 stycznia 2025r. Art.3. Ustawa wchodzi w życie z dniem następującym po dniu ogłoszenia, z mocą od dnia 1 lipca\n 2024r., z wyjątkiem art. 1 pkt 2, który wchodzi w życie "
+        },
+        {
+          "score": 0.7562,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        },
+        {
+          "score": 0.7531,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.7525,
+          "title": "Rozporządzenie Rady Ministrów z dnia 27 grudnia 2024 r. w sprawie nadania Instyt",
+          "year": "2024",
+          "text": "§6. Umowy zawarte przez Instytut Badań Edukacyjnych przed dniem wejścia w życie rozporządzenia\n zachowują moc. Umowy te są realizowane na dotychczasowych zasadach. §7. Rozporządzenie wchodzi w życie z"
+        },
+        {
+          "score": 0.7498,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o wypowiedzeniu Porozumienia o zdolności prawnej",
+          "year": "2024",
+          "text": "Ustawa\nz dnia 5 grudnia 2024r.\no wypowiedzeniu Porozumienia o zdolności prawnej, przywilejach i immunitetach Międzynarodowej\n Organizacji Łączności Kosmicznej „Intersputnik”, sporządzonego w Berlinie "
+        }
+      ],
+      "retrieval_top_score": 0.7624,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 14,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi maksymalny czas pracy w tygodniu wraz z nadgodzinami?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.757,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.754,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.7529,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7488,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "14.00 w sobotę bezpośrednio poprzedzającą pierwszy dzień Wielkiej Nocy, powierza pracownikowi\n lub zatrudnionemu wykonywanie pracy w handlu lub wykonywanie czynności związanych\n z handlem; ” . Art.5. "
+        },
+        {
+          "score": 0.7443,
+          "title": "Rozporządzenie Ministra Obrony Narodowej z dnia 20 grudnia 2024 r. zmieniające r",
+          "year": "2024",
+          "text": ": [\n \n ]\n }\n , { \n \"id\" : \"part_3\",\n \"title\" : \"Załącznik nr 2 - Wysokość równoważnika w zamian za przedmioty umundurowania i wyekwipowania polowego i ćwiczebnego niewydane w naturze\",\n \"type\": \"part\""
+        }
+      ],
+      "retrieval_top_score": 0.757,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 15,
+      "category": "prawo_karne",
+      "question": "Co grozi za jazdę samochodem pod wpływem alkoholu w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7831,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.7617,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "na terytorium kraju wyroby spirytusowe\"},{\"id\": \"none_Tabela 3\",\"symbol\": \"none_Tabela 3\",\"type\": \"none\",\"name\": \"Tabela 3\",\"title\": \"Tabela 3. - Importowane, nabywane wewnątrzwspólnotowo i wyprodukow"
+        },
+        {
+          "score": 0.7585,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "na podstawie art. 74\n ust. 2ca ustawy, nr rej.... , data... ”, wpisując numer rejestracyjny i datę rejestracji,\n oraz przystawia pieczątkę organu rejestrującego, wykonuje kserokopię tego dokumentu,\n a"
+        },
+        {
+          "score": 0.758,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "\"pint_6\",\"type\": \"pint\",\"name\": \"6\",\"title\": \"6)\"}]},{\"id\": \"para_12-pass_2\",\"symbol\": \"pass_2\",\"type\": \"pass\",\"name\": \"2\",\"title\": \"2.\"}]},{\"id\": \"para_13\",\"symbol\": \"para_13\",\"type\": \"para\",\"name\": "
+        },
+        {
+          "score": 0.7519,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "terytorium kraju wyrobów tytoniowych (papierosów, tytoniu, cygar, cygaretek), spirytusowych, winiarskich, suszu tytoniowego, płynu do papierosów elektronicznych oraz wyrobów nowatorskich\",\n \"type\": \"p"
+        }
+      ],
+      "retrieval_top_score": 0.7831,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 16,
+      "category": "ochrona_danych",
+      "question": "Jakie prawa przysługują osobie fizycznej na podstawie RODO w zakresie jej danych osobowych?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7646,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie danych zawa",
+          "year": "2024",
+          "text": "numerem identyfikacyjnym EX”, składa kolejne uprzednie powiadomienie; 13) rodzaj przedstawicielstwa, jeżeli wynika z mocy prawa lub zostało ustanowione przez\n podatnika - w przypadku gdy uprzednie pow"
+        },
+        {
+          "score": 0.7617,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 19 grudnia 202",
+          "year": "2024",
+          "text": " ust. 2 pkt 1; ” ; 16) załącznik nr 1 do rozporządzenia otrzymuje brzmienie określone w załączniku nr 1 do\n niniejszego rozporządzenia; 17) załącznik nr 4 do rozporządzenia otrzymuje brzmienie określo"
+        },
+        {
+          "score": 0.757,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "kartoteki budynków\n lub kartoteki lokali; 6) numer pozycji kartoteki budynków lub kartoteki lokali; 7) datę sporządzenia dokumentu; 8) nazwisko i imię osoby, która sporządziła dokument, albo adnotacje"
+        },
+        {
+          "score": 0.7559,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7551,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": "\"para_4-pint_2\",\"symbol\": \"pint_2\",\"type\": \"pint\",\"name\": \"2\",\"title\": \"2)\"}]},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\",\"type\":"
+        }
+      ],
+      "retrieval_top_score": 0.7646,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 17,
+      "category": "prawo_budowlane",
+      "question": "Czy do budowy domu jednorodzinnego o powierzchni zabudowy do 70 m2 potrzebne jest pozwolenie na budowę?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8283,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "budowlane (\nDz. U. z 2024r. poz. 725\n, \n834\n, \n1222\n, \n1847\n i \n1881\n)\n, określone w projekcie zagospodarowania działki lub terenu stanowiącym załącznik\n do wniosku o pozwolenie na budowę albo zgłosze"
+        },
+        {
+          "score": 0.8112,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "się średnikiem i dodaje się\n pkt 5 w brzmieniu: „ 5) ostatecznych decyzji o zatwierdzeniu projektu scalenia gruntów wydanych na podstawie\n przepisów \nustawy z dnia 26 marca 1982r. o scalaniu i wymiani"
+        },
+        {
+          "score": 0.8034,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "organ. ” ; 7) w § 44: a) w ust. 4 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, b) w ust. 5 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, c) p"
+        },
+        {
+          "score": 0.8022,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " budynków i\n budowli, które według stanu na dzień 31 grudnia roku poprzedzającego rok, w którym\n sporządzany jest wniosek, są zwolnione z tego podatku na podstawie \nart. 7 ust. 2 pkt 5a ustawy z dnia "
+        },
+        {
+          "score": 0.7913,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "w oddzielnej izbie żołnierskiej. 4. Z uwagi na warunki lokalowe (techniczno-budowlane) dowódca może kwaterować żołnierzy\n we wspólnych kwaterach stałych o większej powierzchni podstawowej niż powierzc"
+        }
+      ],
+      "retrieval_top_score": 0.8283,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 18,
+      "category": "prawo_konsumenckie",
+      "question": "Ile dni ma konsument na odstąpienie od umowy zawartej przez internet?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7933,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "1 pkt 2-8, są okazywane właściwemu naczelnikowi\n urzędu skarbowego w sprawach znaków akcyzy przed wydaniem decyzji, o której mowa w\n art. 126 ust. 1 ustawy. Dokumenty, o których mowa w ust. 1, powinny"
+        },
+        {
+          "score": 0.7912,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        },
+        {
+          "score": 0.7817,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " błędów w tym terminie wniosek pozostawia się bez rozpatrzenia. §4. W terminie do dnia 31 sierpnia roku następującego po roku: 1) za który sporządzono wniosek lub korektę wniosku, 2) w którym złożono "
+        },
+        {
+          "score": 0.7796,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "roku wytworzenia, numeru ewidencyjnego\n i liczby banderol przekazanych w celu naniesienia na opakowania jednostkowe wyrobów\n akcyzowych lub wyroby akcyzowe, wykorzystanych do naniesienia, uszkodzonych"
+        },
+        {
+          "score": 0.7788,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "przypadkach dowódca może cofnąć zgodę na zakwaterowanie żołnierza\n zawodowego we wspólnej kwaterze stałej. §7. Rozporządzenie wchodzi w życie po upływie 14 dni od dnia ogłoszenia\n4)\nRozporządzenie zos"
+        }
+      ],
+      "retrieval_top_score": 0.7933,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 19,
+      "category": "prawo_pracy",
+      "question": "Jakie informacje pracodawca musi podać w świadectwie pracy?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7903,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.7741,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "może być nadal zatrudniony\n na tym stanowisku. §6. Rozporządzenie wchodzi w życie z dniem następującym po dniu ogłoszenia\n1)\nRozporządzenie zostało ogłoszone w dniu 7 lutego 2019r.\n. 1) Rozporządzenie"
+        },
+        {
+          "score": 0.7712,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7701,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.7698,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "kartoteki budynków\n lub kartoteki lokali; 6) numer pozycji kartoteki budynków lub kartoteki lokali; 7) datę sporządzenia dokumentu; 8) nazwisko i imię osoby, która sporządziła dokument, albo adnotacje"
+        }
+      ],
+      "retrieval_top_score": 0.7903,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 20,
+      "category": "prawo_spadkowe",
+      "question": "Kto dziedziczy z ustawy w pierwszej kolejności w polskim prawie spadkowym?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7834,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7831,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "2, mogą zostać złożone od dnia 1 stycznia 2025r. Art.3. Ustawa wchodzi w życie z dniem następującym po dniu ogłoszenia, z mocą od dnia 1 lipca\n 2024r., z wyjątkiem art. 1 pkt 2, który wchodzi w życie "
+        },
+        {
+          "score": 0.782,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        },
+        {
+          "score": 0.782,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "mowa w art. 32 ust.\n 1 ustawy; 7) opis okoliczności, które spowodowały brak uzyskania wyniku sportowego uprawniającego\n do otrzymania stypendium, o którym mowa w art. 32 ust. 1 ustawy - w przypadku st"
+        },
+        {
+          "score": 0.778,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": "\"para_4-pint_2\",\"symbol\": \"pint_2\",\"type\": \"pint\",\"name\": \"2\",\"title\": \"2)\"}]},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\",\"type\":"
+        }
+      ],
+      "retrieval_top_score": 0.7834,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 21,
+      "category": "prawo_pracy",
+      "question": "Kiedy pracownikowi przysługuje odprawa przy zwolnieniu z przyczyn niedotyczących pracownika?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.818,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "zaliczonych do lekkiego stopnia niepełnosprawności. ” ; 2) w art. 46a w ust. 1 pkt 1 otrzymuje brzmienie: „ 1) na zadanie, o którym mowa w art. 26a - w wysokości do 30 % środków zaplanowanych na\n real"
+        },
+        {
+          "score": 0.8167,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "248\n, z późn. zm.\n4)\nZmiany tekstu jednolitego wymienionej ustawy zostały ogłoszone w Dz. U. z 2024r.\n poz. 834, 1089, 1222, 1248, 1585, 1871 i 1907.\n)\n - w przypadku pełnienia służby poza granicami p"
+        },
+        {
+          "score": 0.816,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.8134,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "§ 1 pkt 2 rozporządzenia, o którym mowa w odnośniku 1.\n. Oddelegowany funkcjonariusz SKW w czasie oddelegowania podlega Szefowi SKW, a w zakresie\n wykonywanych zadań i obowiązków określonych w porozum"
+        },
+        {
+          "score": 0.8115,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        }
+      ],
+      "retrieval_top_score": 0.818,
+      "keyword_hits": 2,
+      "keyword_total": 3,
+      "keyword_rate": 0.667
+    },
+    {
+      "id": 22,
+      "category": "prawo_gospodarcze",
+      "question": "Jakie są obowiązki przedsiębiorcy wobec ZUS przy zatrudnieniu pierwszego pracownika?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.78,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "§8. 1. Wnioskodawca, składając wniosek o wydanie banderol podatkowych lub o sprzedaż banderol\n legalizacyjnych oraz o wydanie upoważnienia do odbioru banderol do właściwego naczelnika\n urzędu skarbowe"
+        },
+        {
+          "score": 0.7773,
+          "title": "Ustawa z dnia 6 grudnia 2024 r. o zmianie ustawy o dniach wolnych od pracy oraz ",
+          "year": "2024",
+          "text": "lub wykonywania czynności związanych z handlem\n nieodpłatnie w placówkach handlowych w niedziele i święta, a także w sobotę bezpośrednio\n poprzedzającą pierwszy dzień Wielkiej Nocy - jest zakazane. ” "
+        },
+        {
+          "score": 0.7764,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "§ 1 pkt 2 rozporządzenia, o którym mowa w odnośniku 1.\n. Oddelegowany funkcjonariusz SKW w czasie oddelegowania podlega Szefowi SKW, a w zakresie\n wykonywanych zadań i obowiązków określonych w porozum"
+        },
+        {
+          "score": 0.7753,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.7732,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie danych zawa",
+          "year": "2024",
+          "text": "numerem identyfikacyjnym EX”, składa kolejne uprzednie powiadomienie; 13) rodzaj przedstawicielstwa, jeżeli wynika z mocy prawa lub zostało ustanowione przez\n podatnika - w przypadku gdy uprzednie pow"
+        }
+      ],
+      "retrieval_top_score": 0.78,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 23,
+      "category": "prawo_administracyjne",
+      "question": "Co to jest decyzja administracyjna i jakie są jej obowiązkowe elementy?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8069,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        },
+        {
+          "score": 0.7945,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "1 pkt 2-8, są okazywane właściwemu naczelnikowi\n urzędu skarbowego w sprawach znaków akcyzy przed wydaniem decyzji, o której mowa w\n art. 126 ust. 1 ustawy. Dokumenty, o których mowa w ust. 1, powinny"
+        },
+        {
+          "score": 0.7905,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.7881,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7875,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "\"title\" : \"Treść obwieszczenia\",\n \"type\": \"part\",\n \"symbol\" : \"part_1\",\n \"children\" : [\n {\"id\": \"pass_1\",\"symbol\": \"pass_1\",\"type\": \"pass\",\"name\": \"1\",\"title\": \"1.\"},{\"id\": \"pass_2\",\"symbol\": \"pass_2\""
+        }
+      ],
+      "retrieval_top_score": 0.8069,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 24,
+      "category": "prawo_cywilne",
+      "question": "Czym różni się rękojmia od gwarancji przy zakupie towaru?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.816,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "Agencji, o którym mowa w ust. 1, wyłącza się środki: 1) zakładowego funduszu świadczeń socjalnych; 2) stanowiące złożone wadia przetargowe lub wniesione przez kontrahentów na rzecz Agencji\n zabezpiecz"
+        },
+        {
+          "score": 0.8081,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.8067,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o Funduszu Ochrony Rolnictwa or",
+          "year": "2024",
+          "text": "pkt 7 w brzmieniu: „ 7) oświadczenie o prawdziwości danych i oświadczeń zawartych we wniosku i w załącznikach\n dołączonych do tego wniosku. ” , e) po ust. 3 dodaje się ust. 3a i 3b w brzmieniu: „ 3a. "
+        },
+        {
+          "score": 0.8053,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o Funduszu Ochrony Rolnictwa or",
+          "year": "2024",
+          "text": "wskazanie członków tej grupy, od których te produkty zostały nabyte, z podaniem ich\n imion i nazwisk albo nazw, d) wykaz dokumentów potwierdzających nabycie przez tę grupę produktów rolnych, o którym\n"
+        },
+        {
+          "score": 0.8047,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        }
+      ],
+      "retrieval_top_score": 0.816,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 25,
+      "category": "prawo_karne",
+      "question": "Jaka jest różnica między przestępstwem a wykroczeniem w polskim prawie?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7904,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.773,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": " ]\n }\n , { \n \"id\" : \"part_2\",\n \"title\" : \"Załącznik nr 1 - Wysokość równoważnika wypłacanego w zamian za przedmioty ubioru wyjściowego i służbowego policjantowi mianowanemu na stałe (W ZŁ)\",\n \"type\": "
+        },
+        {
+          "score": 0.7677,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.767,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7658,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": "\"para_4-pint_2\",\"symbol\": \"pint_2\",\"type\": \"pint\",\"name\": \"2\",\"title\": \"2)\"}]},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\",\"type\":"
+        }
+      ],
+      "retrieval_top_score": 0.7904,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 26,
+      "category": "prawo_pracy",
+      "question": "Ile wynosi minimalne wynagrodzenie za pracę w Polsce w 2024 roku?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.781,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "\"3.\"}]},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\",\"type\": \"para\",\"name\": \"5\",\"title\": \"§ 5.\"},{\"id\": \"para_6\",\"symbol\": \"para_6\""
+        },
+        {
+          "score": 0.7774,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": " ]\n }\n , { \n \"id\" : \"part_2\",\n \"title\" : \"Załącznik nr 1 - Wysokość równoważnika wypłacanego w zamian za przedmioty ubioru wyjściowego i służbowego policjantowi mianowanemu na stałe (W ZŁ)\",\n \"type\": "
+        },
+        {
+          "score": 0.7728,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "\"§ 2.\"},{\"id\": \"para_3\",\"symbol\": \"para_3\",\"type\": \"para\",\"name\": \"3\",\"title\": \"§ 3.\"},{\"id\": \"para_4\",\"symbol\": \"para_4\",\"type\": \"para\",\"name\": \"4\",\"title\": \"§ 4.\"},{\"id\": \"para_5\",\"symbol\": \"para_5\""
+        },
+        {
+          "score": 0.7663,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o rehabilitacji zawodowej i spo",
+          "year": "2024",
+          "text": "zaliczonych do lekkiego stopnia niepełnosprawności. ” ; 2) w art. 46a w ust. 1 pkt 1 otrzymuje brzmienie: „ 1) na zadanie, o którym mowa w art. 26a - w wysokości do 30 % środków zaplanowanych na\n real"
+        },
+        {
+          "score": 0.7653,
+          "title": "Obwieszczenie Prezesa Rady Ministrów z dnia 16 grudnia 2024 r. w sprawie ogłosze",
+          "year": "2024",
+          "text": "może być nadal zatrudniony\n na tym stanowisku. §6. Rozporządzenie wchodzi w życie z dniem następującym po dniu ogłoszenia\n1)\nRozporządzenie zostało ogłoszone w dniu 7 lutego 2019r.\n. 1) Rozporządzenie"
+        }
+      ],
+      "retrieval_top_score": 0.781,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 27,
+      "category": "prawo_rodzinne",
+      "question": "Na czym polega instytucja rozdzielności majątkowej małżonków i jak ją ustanowić?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.8059,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.8055,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "organ. ” ; 7) w § 44: a) w ust. 4 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, b) w ust. 5 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, c) p"
+        },
+        {
+          "score": 0.7944,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "się średnikiem i dodaje się\n pkt 5 w brzmieniu: „ 5) ostatecznych decyzji o zatwierdzeniu projektu scalenia gruntów wydanych na podstawie\n przepisów \nustawy z dnia 26 marca 1982r. o scalaniu i wymiani"
+        },
+        {
+          "score": 0.7944,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "Agencji, o którym mowa w ust. 1, wyłącza się środki: 1) zakładowego funduszu świadczeń socjalnych; 2) stanowiące złożone wadia przetargowe lub wniesione przez kontrahentów na rzecz Agencji\n zabezpiecz"
+        },
+        {
+          "score": 0.7944,
+          "title": "Obwieszczenie Ministra Obrony Narodowej z dnia 11 grudnia 2024 r. w sprawie ogło",
+          "year": "2024",
+          "text": "jest to uzasadnione potrzebami SKW. §6. Funkcjonariusz wyznaczony do oddelegowania zostaje zapoznany z treścią wniosku i wyraża\n wstępną zgodę na oddelegowanie przez złożenie pisemnego oświadczenia, z"
+        }
+      ],
+      "retrieval_top_score": 0.8059,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 28,
+      "category": "ochrona_srodowiska",
+      "question": "Jakie kary grożą za nielegalne składowanie odpadów w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7861,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.7674,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "\"pint_7\",\"type\": \"pint\",\"name\": \"7\",\"title\": \"7)\"},{\"id\": \"none_II-pint_8\",\"symbol\": \"pint_8\",\"type\": \"pint\",\"name\": \"8\",\"title\": \"8)\"},{\"id\": \"none_II-pint_9\",\"symbol\": \"pint_9\",\"type\": \"pint\",\"name\""
+        },
+        {
+          "score": 0.7612,
+          "title": "Rozporządzenie Ministra Klimatu i Środowiska z dnia 24 grudnia 2024 r. zmieniają",
+          "year": "2024",
+          "text": "o gospodarce opakowaniami i odpadami\n opakowaniowymi\n”, wiersz oznaczony „Poz. 3” otrzymuje brzmienie: 3 butelki szklane wielokrotnego użytku o pojemności do półtora litra 0,01 0,05 0,25 §2. Rozporząd"
+        },
+        {
+          "score": 0.7603,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "Agencji, o którym mowa w ust. 1, wyłącza się środki: 1) zakładowego funduszu świadczeń socjalnych; 2) stanowiące złożone wadia przetargowe lub wniesione przez kontrahentów na rzecz Agencji\n zabezpiecz"
+        },
+        {
+          "score": 0.7601,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "\"pint_6\",\"type\": \"pint\",\"name\": \"6\",\"title\": \"6)\"}]},{\"id\": \"para_12-pass_2\",\"symbol\": \"pass_2\",\"type\": \"pass\",\"name\": \"2\",\"title\": \"2.\"}]},{\"id\": \"para_13\",\"symbol\": \"para_13\",\"type\": \"para\",\"name\": "
+        }
+      ],
+      "retrieval_top_score": 0.7861,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    },
+    {
+      "id": 29,
+      "category": "prawo_budowlane",
+      "question": "Czym jest samowola budowlana i jakie są jej konsekwencje prawne?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7654,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie zwrotu utra",
+          "year": "2024",
+          "text": " budynków i\n budowli, które według stanu na dzień 31 grudnia roku poprzedzającego rok, w którym\n sporządzany jest wniosek, są zwolnione z tego podatku na podstawie \nart. 7 ust. 2 pkt 5a ustawy z dnia "
+        },
+        {
+          "score": 0.7633,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "organ. ” ; 7) w § 44: a) w ust. 4 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, b) w ust. 5 wyrazy \n„31 grudnia 2024r.”\n zastępuje się wyrazami \n„31 grudnia 2029r.”\n, c) p"
+        },
+        {
+          "score": 0.7622,
+          "title": "Rozporządzenie Ministra Rozwoju i Technologii z dnia 19 grudnia 2024 r. zmieniaj",
+          "year": "2024",
+          "text": "budowlane (\nDz. U. z 2024r. poz. 725\n, \n834\n, \n1222\n, \n1847\n i \n1881\n)\n, określone w projekcie zagospodarowania działki lub terenu stanowiącym załącznik\n do wniosku o pozwolenie na budowę albo zgłosze"
+        },
+        {
+          "score": 0.7598,
+          "title": "Rozporządzenie Ministra Finansów z dnia 22 grudnia 2024 r. w sprawie oznaczania ",
+          "year": "2024",
+          "text": "w których znaki akcyzy mogą być zdjęte z opakowań jednostkowych\n wyrobów akcyzowych lub z wyrobów akcyzowych, warunki i tryb zdejmowania znaków akcyzy\n oraz wzór wniosku o zdjęcie znaków akcyzy; 5) wz"
+        },
+        {
+          "score": 0.7575,
+          "title": "Rozporządzenie Ministra Spraw Wewnętrznych i Administracji z dnia 27 grudnia 202",
+          "year": "2024",
+          "text": "Agencji, o którym mowa w ust. 1, wyłącza się środki: 1) zakładowego funduszu świadczeń socjalnych; 2) stanowiące złożone wadia przetargowe lub wniesione przez kontrahentów na rzecz Agencji\n zabezpiecz"
+        }
+      ],
+      "retrieval_top_score": 0.7654,
+      "keyword_hits": 1,
+      "keyword_total": 3,
+      "keyword_rate": 0.333
+    },
+    {
+      "id": 30,
+      "category": "prawo_gospodarcze",
+      "question": "Ile trwa postępowanie upadłościowe dla osoby fizycznej (upadłość konsumencka) w Polsce?",
+      "answer": "",
+      "sources": [
+        {
+          "score": 0.7883,
+          "title": "Ustawa z dnia 5 grudnia 2024 r. o zmianie ustawy o Funduszu Ochrony Rolnictwa or",
+          "year": "2024",
+          "text": "ust. 3 w pkt 6: - uchyla się lit. a, - lit. b otrzymuje brzmienie: „ b) organ ewidencyjny wykreśli zgodnie z przepisami \nustawy z dnia 6 marca 2018r. o Centralnej Ewidencji i Informacji o Działalności"
+        },
+        {
+          "score": 0.7769,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "się za zajęcie: 1) od 1. do 3. miejsca - na okres do 18 miesięcy; 2) od 4. do 8. miejsca - na okres do 12 miesięcy. 3. Stypendium za osiągnięte wyniki sportowe, o których mowa w § 5 ust. 1 pkt 5-8 i u"
+        },
+        {
+          "score": 0.7766,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "orzeczenia lekarskiego, o którym mowa w art. 37 ust. 1 ustawy,\n stypendium, o którym mowa w art. 32 ust. 1, art. 32a ust. 1 i art. 32b ust. 1 ustawy,\n może być wypłacane przez okres tej niezdolności, "
+        },
+        {
+          "score": 0.7753,
+          "title": "Rozporządzenie Ministra Infrastruktury z dnia 17 grudnia 2024 r. zmieniające roz",
+          "year": "2024",
+          "text": "o której mowa w art. 74 ust. 2ca ustawy: 1) wcześniej zarejestrowanego na terytorium Rzeczypospolitej Polskiej organ rejestrujący: a) stwierdza, na podstawie \nart. 162 § 1 pkt 1 ustawy z dnia 14 czerw"
+        },
+        {
+          "score": 0.7703,
+          "title": "Rozporządzenie Ministra Sportu i Turystyki z dnia 20 grudnia 2024 r. w sprawie s",
+          "year": "2024",
+          "text": "mowa w art. 32 ust.\n 1 ustawy; 7) opis okoliczności, które spowodowały brak uzyskania wyniku sportowego uprawniającego\n do otrzymania stypendium, o którym mowa w art. 32 ust. 1 ustawy - w przypadku st"
+        }
+      ],
+      "retrieval_top_score": 0.7883,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_rate": 0.0
+    }
+  ]
+}
