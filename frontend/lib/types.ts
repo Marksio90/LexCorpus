@@ -5,7 +5,15 @@ export type SourceType =
   | "judgment_tk"
   | "judgment_common"
   | "judgment_kio"
+  | "tax_interpretation"
   | "unknown";
+
+export type FeedbackRating = 1 | -1;
+
+export interface FeedbackResponse {
+  id: string;
+  rating: FeedbackRating;
+}
 
 export interface SourceDocument {
   score: number;
@@ -83,6 +91,7 @@ export interface SourceBreakdown {
   judgment_tk: number;
   judgment_common: number;
   judgment_kio: number;
+  tax_interpretation: number;
   total: number;
 }
 

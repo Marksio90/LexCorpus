@@ -95,6 +95,36 @@ services:
         fi
       "
 
+  fetch-kis:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-fetch-kis
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+    environment:
+      - KIS_YEAR_FROM=${KIS_YEAR_FROM:-2020}
+      - KIS_YEAR_TO=${KIS_YEAR_TO:-2025}
+      - KIS_MAX_ITEMS=${KIS_MAX_ITEMS:-}
+      - KIS_ENABLED=${KIS_ENABLED:-true}
+      - KIS_API_URL=${KIS_API_URL:-https://interpretacje.podatki.gov.pl}
+      - KIS_DELAY=${KIS_DELAY:-0.5}
+    command: >
+      sh -c "
+        if [ \"$$KIS_ENABLED\" = 'false' ]; then
+          echo 'KIS fetch disabled (KIS_ENABLED=false) — skipping.';
+        elif ls /app/data/raw/kis_*.jsonl 1>/dev/null 2>&1; then
+          echo 'KIS data already exists — skipping fetch.';
+        else
+          python scripts/fetch_kis.py
+            --year-from $$KIS_YEAR_FROM
+            --year-to $$KIS_YEAR_TO
+            ${KIS_MAX_ITEMS:+--max-items $$KIS_MAX_ITEMS}
+            --output /app/data/raw/;
+        fi
+      "
+
   preprocess:
     build:
       context: .
@@ -109,15 +139,25 @@ services:
         condition: service_completed_successfully
       fetch-eurlex:
         condition: service_completed_successfully
+      fetch-kis:
+        condition: service_completed_successfully
     restart: "no"
+    environment:
+      - PARENT_CHILD_CHUNKING=${PARENT_CHILD_CHUNKING:-false}
     command: >
       sh -c "
         if [ -f /app/data/processed/chunks.jsonl ]; then
           echo 'Processed chunks already exist — skipping preprocess.';
         else
+          EXTRA_FLAGS='';
+          if [ \"$$PARENT_CHILD_CHUNKING\" = 'true' ]; then
+            EXTRA_FLAGS='--parent-child';
+            echo 'Parent-child chunking enabled.';
+          fi;
           python scripts/preprocess.py
             --input /app/data/raw/
-            --output /app/data/processed/;
+            --output /app/data/processed/
+            $$EXTRA_FLAGS;
         fi
       "
 

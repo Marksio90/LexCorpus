@@ -519,12 +519,13 @@ async def stats(req: Request) -> StatsResponse:
     client = retriever.client
 
     publisher_map = {
-        "legislation":    "WDU",
-        "judgment_nsa":   "ADMINISTRATIVE",
-        "judgment_sn":    "SUPREME",
-        "judgment_tk":    "CONSTITUTIONAL_TRIBUNAL",
-        "judgment_common": "COMMON",
-        "judgment_kio":   "NATIONAL_APPEAL_CHAMBER",
+        "legislation":        "WDU",
+        "judgment_nsa":       "ADMINISTRATIVE",
+        "judgment_sn":        "SUPREME",
+        "judgment_tk":        "CONSTITUTIONAL_TRIBUNAL",
+        "judgment_common":    "COMMON",
+        "judgment_kio":       "NATIONAL_APPEAL_CHAMBER",
+        "tax_interpretation": "KIS",
     }
 
     counts: dict[str, int] = {}
@@ -595,7 +596,7 @@ async def search(request: SearchRequest, req: Request) -> SearchResponse:
         # Map source_type back to publisher for Qdrant filter
         reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
                    "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                   "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+                   "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
         publisher_filter = reverse.get(request.source_type_filter)
 
     chunks = retriever.retrieve(
@@ -650,7 +651,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
             if not publisher_filter and request.source_type_filter:
                 reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
                            "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                           "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+                           "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
                 publisher_filter = reverse.get(request.source_type_filter)
             chunks = retriever.retrieve(
                 query=question,
@@ -745,7 +746,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                 if not publisher_filter and request.source_type_filter:
                     reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
                                "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                               "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+                               "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
                     publisher_filter = reverse.get(request.source_type_filter)
                 chunks = retriever.retrieve(
                     query=question,

@@ -5,6 +5,72 @@ import type { AskResponse, AnswerConfidence, SourceDocument } from "@/lib/types"
 import { SourceList, SourceTypeBadge, buildExternalLink } from "./SourceList";
 import { PdfDownloadButton } from "./PdfDownloadButton";
 
+// ── Feedback thumbs up/down ───────────────────────────────────────────────────
+
+function FeedbackButtons({ queryLogId }: { queryLogId?: string }) {
+  const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  if (!queryLogId) return null;
+
+  async function submit(value: 1 | -1) {
+    if (status === "loading") return;
+    const next = rating === value ? null : value; // toggle off
+    setStatus("loading");
+    try {
+      const r = await fetch("/api/feedback", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ queryLogId, rating: next ?? value }),
+      });
+      if (!r.ok) throw new Error("server error");
+      setRating(next ?? value);
+      setStatus("done");
+      setTimeout(() => setStatus("idle"), 1500);
+    } catch {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 2000);
+    }
+  }
+
+  const base = "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border";
+  const active   = "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700";
+  const inactive = "bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700";
+
+  return (
+    <div className="flex items-center gap-1.5" title="Oceń tę odpowiedź">
+      <span className="text-[10px] uppercase tracking-wide text-slate-400 mr-0.5">Oceń</span>
+      <button
+        onClick={() => submit(1)}
+        disabled={status === "loading"}
+        className={`${base} ${rating === 1 ? active : inactive}`}
+        aria-label="Dobra odpowiedź"
+      >
+        <svg className="w-3.5 h-3.5" fill={rating === 1 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+        </svg>
+        {status === "done" && rating === 1 ? "Dzięki!" : "Tak"}
+      </button>
+      <button
+        onClick={() => submit(-1)}
+        disabled={status === "loading"}
+        className={`${base} ${rating === -1 ? active : inactive}`}
+        aria-label="Zła odpowiedź"
+      >
+        <svg className="w-3.5 h-3.5" fill={rating === -1 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+        </svg>
+        {status === "done" && rating === -1 ? "Dzięki!" : "Nie"}
+      </button>
+      {status === "error" && (
+        <span className="text-[10px] text-red-500">Błąd</span>
+      )}
+    </div>
+  );
+}
+
 // ── Confidence badge ──────────────────────────────────────────────────────────
 
 function ConfidenceBadge({ confidence }: { confidence: AnswerConfidence }) {
@@ -54,6 +120,7 @@ function ConfidenceBadge({ confidence }: { confidence: AnswerConfidence }) {
 interface AnswerCardProps {
   response: AskResponse;
   streaming?: boolean;
+  queryLogId?: string;
 }
 
 // ── Export helpers ────────────────────────────────────────────────────────────
@@ -324,7 +391,7 @@ function AnswerText({ text, sources }: { text: string; sources: SourceDocument[]
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
+export function AnswerCard({ response, streaming = false, queryLogId }: AnswerCardProps) {
   const { answer, model_used, retrieval_used, sources, question, confidence } = response;
 
   return (
@@ -370,6 +437,12 @@ export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
         <AnswerText text={answer} sources={sources} />
         {streaming && (
           <span className="inline-block w-0.5 h-4 ml-0.5 bg-slate-500 dark:bg-slate-400 animate-pulse align-middle" />
+        )}
+
+        {!streaming && (
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <FeedbackButtons queryLogId={queryLogId} />
+          </div>
         )}
       </div>
 

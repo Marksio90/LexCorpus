@@ -8,13 +8,14 @@ interface SourceListProps {
 }
 
 const SOURCE_TYPE_LABELS: Record<SourceType, { label: string; color: string }> = {
-  legislation:        { label: "Ustawa",    color: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" },
-  judgment_nsa:       { label: "NSA/WSA",   color: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300" },
-  judgment_sn:        { label: "SN",        color: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300" },
-  judgment_tk:        { label: "TK",        color: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" },
-  judgment_common:    { label: "Sąd",       color: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" },
-  judgment_kio:       { label: "KIO",       color: "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300" },
-  unknown:            { label: "Źródło",    color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
+  legislation:         { label: "Ustawa",    color: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" },
+  judgment_nsa:        { label: "NSA/WSA",   color: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300" },
+  judgment_sn:         { label: "SN",        color: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300" },
+  judgment_tk:         { label: "TK",        color: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" },
+  judgment_common:     { label: "Sąd",       color: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" },
+  judgment_kio:        { label: "KIO",       color: "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300" },
+  tax_interpretation:  { label: "Interpretacja KIS", color: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" },
+  unknown:             { label: "Źródło",    color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
 };
 
 export function SourceTypeBadge({ type }: { type: SourceType }) {
@@ -46,6 +47,18 @@ function ScoreBadge({ score }: { score: number }) {
 
 /** Returns { url, label } for the external link button, or null if no link available. */
 export function buildExternalLink(source: SourceDocument): { url: string; label: string } | null {
+  if (source.source_type === "tax_interpretation") {
+    if (source.url) return { url: source.url, label: "Portal KIS ↗" };
+    // Fallback: construct KIS portal search URL from signature (pos field)
+    const sig = source.pos || source.act_id.replace(/^kis_/, "");
+    if (sig) {
+      return {
+        url: `https://interpretacje.podatki.gov.pl/wyszukiwarka-interpretacji/${encodeURIComponent(sig)}`,
+        label: "Portal KIS ↗",
+      };
+    }
+    return null;
+  }
   if (source.source_type === "legislation" || source.source_type === "unknown") {
     // Try ELI-based ISAP URL
     if (source.url && source.url.includes("sejm.gov.pl")) {

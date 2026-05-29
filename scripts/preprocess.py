@@ -34,6 +34,12 @@ log = logging.getLogger(__name__)
 CHUNK_TOKENS = 512
 OVERLAP_TOKENS = 64
 
+# Parent-child chunking: child chunks are smaller for precise retrieval;
+# parent text (the full 512-token chunk) is embedded into each child's payload
+# so the retriever can return wider context to the LLM without an extra query.
+CHILD_CHUNK_TOKENS = 128
+CHILD_OVERLAP_TOKENS = 16
+
 # Boilerplate patterns common in Polish legal documents
 BOILERPLATE_PATTERNS = [
     re.compile(r"Dziennik Ustaw\s+–\s+\d+\s+–\s+Poz\.\s+\d+", re.IGNORECASE),
@@ -237,11 +243,74 @@ def _is_saos_record(record: dict) -> bool:
     return "saos_id" in record or "court_type" in record
 
 
-def process_record(record: dict, chunk_tokens: int = 512, overlap_tokens: int = 64) -> list[dict]:
-    """Clean and chunk a single JSONL record (ISAP or SAOS format)."""
+def make_child_chunks(parent_chunk: dict) -> list[dict]:
+    """
+    Split one parent chunk into smaller child chunks (128 tokens).
+
+    Each child carries the full parent text in `parent_text` so the retriever
+    can pass the wider context to the LLM without an extra Qdrant lookup.
+    Children are the primary search targets; parents are their context windows.
+    """
+    parent_text = parent_chunk["text"]
+    child_texts = split_into_chunks(parent_text, CHILD_CHUNK_TOKENS, CHILD_OVERLAP_TOKENS)
+
+    if len(child_texts) <= 1:
+        # Parent is already small enough — mark as child directly
+        child = {
+            **parent_chunk,
+            "chunk_type": "child",
+            "parent_text": parent_text,
+            "child_index": 0,
+            "total_children": 1,
+        }
+        return [child]
+
+    parent_id = "{act_id}__p{idx}".format(
+        act_id=parent_chunk.get("act_id", ""),
+        idx=parent_chunk.get("chunk_index", 0),
+    )
+
+    children: list[dict] = []
+    for child_idx, child_text in enumerate(child_texts):
+        child = {
+            **parent_chunk,
+            "text": child_text,
+            "chunk_type": "child",
+            "parent_text": parent_text,
+            "parent_chunk_id": parent_id,
+            "child_index": child_idx,
+            "total_children": len(child_texts),
+            "approx_tokens": naive_token_count(child_text),
+        }
+        children.append(child)
+
+    return children
+
+
+def process_record(
+    record: dict,
+    chunk_tokens: int = 512,
+    overlap_tokens: int = 64,
+    parent_child: bool = False,
+) -> list[dict]:
+    """Clean and chunk a single JSONL record (ISAP or SAOS format).
+
+    If parent_child=True, each 512-token parent chunk is further split into
+    128-token child chunks. Children contain `parent_text` for LLM context.
+    """
     if _is_saos_record(record):
-        return _process_saos_record(record, chunk_tokens, overlap_tokens)
-    return _process_isap_record(record, chunk_tokens, overlap_tokens)
+        chunks = _process_saos_record(record, chunk_tokens, overlap_tokens)
+    else:
+        chunks = _process_isap_record(record, chunk_tokens, overlap_tokens)
+
+    if not parent_child:
+        return chunks
+
+    # Explode each parent into children
+    result: list[dict] = []
+    for chunk in chunks:
+        result.extend(make_child_chunks(chunk))
+    return result
 
 
 def _process_isap_record(record: dict, chunk_tokens: int, overlap_tokens: int) -> list[dict]:
@@ -377,7 +446,13 @@ def _process_saos_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
     return result_chunks
 
 
-def process_file(input_path: Path, output_path: Path, chunk_tokens: int = 512, overlap_tokens: int = 64) -> tuple[int, int]:
+def process_file(
+    input_path: Path,
+    output_path: Path,
+    chunk_tokens: int = 512,
+    overlap_tokens: int = 64,
+    parent_child: bool = False,
+) -> tuple[int, int]:
     """Process a single JSONL file. Returns (acts_processed, chunks_written)."""
     acts = 0
     chunks_written = 0
@@ -395,7 +470,7 @@ def process_file(input_path: Path, output_path: Path, chunk_tokens: int = 512, o
                 log.warning("Skipping invalid JSON line in %s", input_path)
                 continue
 
-            chunk_records = process_record(record, chunk_tokens, overlap_tokens)
+            chunk_records = process_record(record, chunk_tokens, overlap_tokens, parent_child)
             for chunk in chunk_records:
                 fout.write(json.dumps(chunk, ensure_ascii=False) + "\n")
                 chunks_written += 1
@@ -420,6 +495,14 @@ def main() -> None:
     )
     parser.add_argument("--chunk-tokens", type=int, default=CHUNK_TOKENS, help="Target tokens per chunk")
     parser.add_argument("--overlap-tokens", type=int, default=OVERLAP_TOKENS, help="Overlap tokens between chunks")
+    parser.add_argument(
+        "--parent-child", action="store_true",
+        help=(
+            "Enable parent-child chunking: each 512-token parent is split into "
+            "128-token child chunks. Children are search targets; parent_text is "
+            "passed to the LLM for wider context. Requires re-ingestion with --recreate."
+        ),
+    )
     args = parser.parse_args()
 
     input_path: Path = args.input
@@ -443,10 +526,17 @@ def main() -> None:
 
     chunk_tokens = args.chunk_tokens
     overlap_tokens = args.overlap_tokens
+    parent_child = args.parent_child
+
+    if parent_child:
+        log.info(
+            "Parent-child mode enabled: parent=%d tokens → children=%d tokens",
+            chunk_tokens, CHILD_CHUNK_TOKENS,
+        )
 
     for f in files:
         out_file = output_dir / f"chunks_{f.stem}.jsonl"
-        acts, chunks = process_file(f, out_file, chunk_tokens, overlap_tokens)
+        acts, chunks = process_file(f, out_file, chunk_tokens, overlap_tokens, parent_child)
         total_acts += acts
         total_chunks += chunks
         log.info("  %s → %s (%d acts, %d chunks)", f.name, out_file.name, acts, chunks)
