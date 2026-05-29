@@ -1,6 +1,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Dummy secret for build-time static analysis only.
+# The real secret comes from docker-compose env at runtime.
+ENV NEXTAUTH_SECRET=build-time-placeholder-not-used-at-runtime
+
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
