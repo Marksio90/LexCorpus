@@ -606,6 +606,9 @@ async def search(request: SearchRequest, req: Request) -> SearchResponse:
         year_from=request.year_from,
         year_to=request.year_to,
         publisher_filter=publisher_filter,
+        source_type_filter=request.source_type_filter,
+        exclude_repealed=request.exclude_repealed,
+        as_of_year=request.as_of_year,
     )
     return SearchResponse(
         query=request.query,
@@ -660,6 +663,9 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
                 year_from=request.year_from,
                 year_to=request.year_to,
                 publisher_filter=publisher_filter,
+                source_type_filter=request.source_type_filter,
+                exclude_repealed=request.exclude_repealed,
+                as_of_year=request.as_of_year,
             )
             context_str = retriever.format_context(chunks, max_chars=8000)
             retrieved_chunks = chunks
@@ -755,6 +761,9 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                     year_from=request.year_from,
                     year_to=request.year_to,
                     publisher_filter=publisher_filter,
+                    source_type_filter=request.source_type_filter,
+                    exclude_repealed=request.exclude_repealed,
+                    as_of_year=request.as_of_year,
                 )
                 context_str = retriever.format_context(chunks, max_chars=8000)
                 retrieved_chunks = chunks

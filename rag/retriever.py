@@ -70,6 +70,8 @@ class RetrievedChunk:
     total_chunks: int
     parent_text: str = ""       # populated when parent-child chunking is used
     chunk_type: str = ""        # "child" | "parent" | "" (legacy)
+    is_repealed: bool = False
+    valid_from_year: int = 0
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -226,6 +228,8 @@ class LegalRetriever:
                 total_chunks=int(payload.get("total_chunks", 1)),
                 parent_text=payload.get("parent_text", ""),
                 chunk_type=payload.get("chunk_type", ""),
+                is_repealed=bool(payload.get("is_repealed", False)),
+                valid_from_year=int(payload.get("valid_from_year", 0)),
             ))
         return results
 
@@ -263,6 +267,8 @@ class LegalRetriever:
         rerank: bool | None = None,
         expand: bool | None = None,
         expand_context: bool = CONTEXT_EXPAND,
+        exclude_repealed: bool = True,
+        as_of_year: int | None = None,
     ) -> list[RetrievedChunk]:
         """
         Full pipeline: query expansion → hybrid search → dedup → cross-encoder re-rank.
@@ -277,6 +283,10 @@ class LegalRetriever:
             rerank: Override instance-level rerank setting for this call.
             expand: Override query expansion for this call (requires query_expander set).
             expand_context: Fetch neighboring chunks and merge into retrieved text.
+            exclude_repealed: Exclude repealed legislation (default True). Applies only
+                to legislation/tax source types; judgments are never excluded by this flag.
+            as_of_year: Filter legislation to acts published up to this year (inclusive).
+                Useful for "stan prawny na rok X" historical queries.
         """
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
@@ -290,7 +300,30 @@ class LegalRetriever:
             except Exception as exc:
                 log.warning("HyDE generation failed, using original query: %s", exc)
 
+        _LEGISLATION_SOURCE_TYPES = {"legislation", "tax_interpretation"}
+
         filter_conditions: list[qmodels.FieldCondition] = []
+
+        # Temporal filters — applied only to legislation/tax (judgments are historical by nature)
+        is_legislation_query = (
+            source_type_filter in _LEGISLATION_SOURCE_TYPES
+            or source_type_filter is None  # may include legislation after auto-routing
+        )
+        if exclude_repealed and is_legislation_query:
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="is_repealed",
+                    match=qmodels.MatchValue(value=False),
+                )
+            )
+        if as_of_year is not None and is_legislation_query:
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="valid_from_year",
+                    range=qmodels.Range(lte=as_of_year),
+                )
+            )
+
         if year_filter:
             filter_conditions.append(
                 qmodels.FieldCondition(key="year", match=qmodels.MatchValue(value=str(year_filter)))
