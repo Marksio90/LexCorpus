@@ -44,8 +44,13 @@ model User {
   createdAt     DateTime  @default(now())
 
   // Subscription tier
-  tier          String    @default("free")   // "free" | "pro" | "kancelaria"
-  tierExpiresAt DateTime?
+  tier                 String    @default("free")   // "free" | "pro" | "kancelaria"
+  tierExpiresAt        DateTime?
+
+  // Stripe
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
 
   accounts   Account[]
   sessions   Session[]
