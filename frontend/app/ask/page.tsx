@@ -110,17 +110,15 @@ export default function AskPage() {
             </span>
           </div>
           <div className="ml-auto flex gap-2">
-            <a
-              href="/history"
-              className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
+            <a href="/search" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Szukaj
+            </a>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <a href="/history" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Historia
             </a>
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <a
-              href="/admin"
-              className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
+            <a href="/admin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Admin
             </a>
           </div>
