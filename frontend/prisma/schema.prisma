@@ -125,10 +125,29 @@ model QueryLog {
   modelUsed     String
   retrievalUsed Boolean  @default(true)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedback Feedback?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+}
+
+// ── User feedback (thumbs up/down) ───────────────────────────────────────────
+
+model Feedback {
+  id          String   @id @default(cuid())
+  queryLogId  String   @unique
+  userId      String?  // nullable — anonymous feedback allowed
+  rating      Int      // +1 (thumbup) or -1 (thumbdown)
+  comment     String?  // optional free-text note
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  queryLog QueryLog @relation(fields: [queryLogId], references: [id], onDelete: Cascade)
+
+  @@index([rating])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId])
 }
 
 // ── API tokens (plan kancelaria) ─────────────────────────────────────────────

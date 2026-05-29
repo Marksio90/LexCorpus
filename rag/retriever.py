@@ -68,6 +68,8 @@ class RetrievedChunk:
     url: str
     chunk_index: int
     total_chunks: int
+    parent_text: str = ""       # populated when parent-child chunking is used
+    chunk_type: str = ""        # "child" | "parent" | "" (legacy)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -222,6 +224,8 @@ class LegalRetriever:
                 url=payload.get("url", ""),
                 chunk_index=int(payload.get("chunk_index", 0)),
                 total_chunks=int(payload.get("total_chunks", 1)),
+                parent_text=payload.get("parent_text", ""),
+                chunk_type=payload.get("chunk_type", ""),
             ))
         return results
 
@@ -317,7 +321,15 @@ class LegalRetriever:
         # Auto-route if no explicit filter provided
         if source_type_filter is None:
             routed = _route_query(query)
-            if routed == "judgment":
+            if routed == "tax":
+                filter_conditions.append(
+                    qmodels.FieldCondition(
+                        key="source_type",
+                        match=qmodels.MatchAny(any=["tax_interpretation"]),
+                    )
+                )
+                log.debug("Auto-routed to tax interpretations")
+            elif routed == "judgment":
                 filter_conditions.append(
                     qmodels.FieldCondition(
                         key="source_type",
@@ -359,11 +371,17 @@ class LegalRetriever:
 
         candidates = list(seen.values())
 
+        # Detect if corpus uses parent-child chunking (any child chunk in candidates)
+        has_children = any(c.chunk_type == "child" for c in candidates)
+
         if not use_rerank or len(candidates) <= top_k:
             results = sorted(candidates, key=lambda c: c.score, reverse=True)[:top_k]
-            return self._expand_context(results) if expand_context else results
+            if has_children:
+                results = self._lift_to_parent(results)
+            return self._expand_context(results) if (expand_context and not has_children) else results
 
         # Cross-encoder re-ranking using the original query (not expansions)
+        # Re-rank on child text (precise) before lifting to parent
         pairs = [(query, c.text) for c in candidates]
         ce_scores = self.rerank_model.predict(pairs)
         ranked = sorted(zip(ce_scores, candidates), key=lambda x: x[0], reverse=True)
@@ -372,7 +390,10 @@ class LegalRetriever:
         for ce_score, chunk in ranked[:top_k]:
             chunk.score = round(float(ce_score), 4)
             results.append(chunk)
-        return self._expand_context(results) if expand_context else results
+
+        if has_children:
+            results = self._lift_to_parent(results)
+        return self._expand_context(results) if (expand_context and not has_children) else results
 
     def _expand_context(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """Enrich each chunk with neighbor text — one Qdrant query per unique document."""
@@ -422,11 +443,36 @@ class LegalRetriever:
                 chunk.text = "\n\n".join(parts)
         return chunks
 
+    def _lift_to_parent(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        """
+        For child chunks (parent-child mode), replace the child text with the
+        parent text so the LLM receives the full 512-token context window.
+
+        The parent_text is embedded in the child's payload at preprocessing time,
+        so no extra Qdrant query is needed here.
+        """
+        seen_parents: set[str] = set()
+        result: list[RetrievedChunk] = []
+
+        for chunk in chunks:
+            if chunk.chunk_type == "child" and chunk.parent_text:
+                # Deduplicate: if two children share the same parent, keep highest-score
+                parent_key = f"{chunk.act_id}___{chunk.parent_text[:64]}"
+                if parent_key in seen_parents:
+                    continue
+                seen_parents.add(parent_key)
+                chunk.text = chunk.parent_text  # replace child text with parent context
+            result.append(chunk)
+
+        return result
+
     def format_context(self, chunks: list[RetrievedChunk], max_chars: int = 4000) -> str:
         parts = []
         total_chars = 0
         for i, chunk in enumerate(chunks, 1):
-            block = f"[{i}] {chunk.citation()}\n{chunk.text}"
+            # Use parent_text if available (richer context for LLM)
+            display_text = chunk.parent_text if chunk.parent_text else chunk.text
+            block = f"[{i}] {chunk.citation()}\n{display_text}"
             if total_chars + len(block) > max_chars:
                 remaining = max_chars - total_chars
                 if remaining > 200:
@@ -438,12 +484,13 @@ class LegalRetriever:
 
 
 SOURCE_TYPE_TO_PUBLISHER = {
-    "legislation": ["WDU", "WMP"],
-    "judgment_nsa": ["ADMINISTRATIVE"],
-    "judgment_sn": ["SUPREME"],
-    "judgment_tk": ["CONSTITUTIONAL_TRIBUNAL"],
-    "judgment_common": ["COMMON"],
-    "judgment_kio": ["NATIONAL_APPEAL_CHAMBER"],
+    "legislation":        ["WDU", "WMP"],
+    "judgment_nsa":       ["ADMINISTRATIVE"],
+    "judgment_sn":        ["SUPREME"],
+    "judgment_tk":        ["CONSTITUTIONAL_TRIBUNAL"],
+    "judgment_common":    ["COMMON"],
+    "judgment_kio":       ["NATIONAL_APPEAL_CHAMBER"],
+    "tax_interpretation": ["KIS"],
 }
 
 
@@ -459,6 +506,13 @@ _JUDGMENT_KEYWORDS = re.compile(
     r"jak orzekają|praktyka|czy sąd|czy można zaskarżyć)\b",
     re.IGNORECASE,
 )
+_TAX_KEYWORDS = re.compile(
+    r"\b(interpretacja|KIS|podatek|VAT|PIT|CIT|akcyza|podatk\w+|"
+    r"urząd skarbowy|MF|ministerstwo finansów|organ podatkowy|"
+    r"deklaracja podatkowa|rozliczenie podatkowe|ulga podatkowa|"
+    r"zwolnienie z VAT|stawka VAT|faktura|korekta faktury)\b",
+    re.IGNORECASE,
+)
 
 
 def _route_query(query: str) -> str | None:
@@ -469,7 +523,10 @@ def _route_query(query: str) -> str | None:
     """
     leg_score = len(_LEGISLATION_KEYWORDS.findall(query))
     jud_score = len(_JUDGMENT_KEYWORDS.findall(query))
+    tax_score = len(_TAX_KEYWORDS.findall(query))
 
+    if tax_score >= 2 and jud_score == 0:
+        return "tax"        # clearly asking for tax interpretation
     if jud_score >= 2 and leg_score == 0:
         return "judgment"   # clearly about case law
     if leg_score >= 2 and jud_score == 0:

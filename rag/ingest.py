@@ -86,7 +86,7 @@ def ensure_collection(
             field_name=field,
             field_schema=qmodels.PayloadSchemaType.KEYWORD,
         )
-    for field in ("publisher", "source_type", "chunk_index"):
+    for field in ("publisher", "source_type", "chunk_index", "chunk_type"):
         client.create_payload_index(
             collection_name=collection_name,
             field_name=field,
@@ -123,9 +123,12 @@ PUBLISHER_TO_SOURCE = {
 }
 
 
+PUBLISHER_TO_SOURCE["KIS"] = "tax_interpretation"
+
+
 def build_payload(chunk: dict) -> dict:
     publisher = chunk.get("publisher", "WDU")
-    return {
+    payload: dict = {
         "act_id": str(chunk.get("act_id", "")),
         "title": chunk.get("title", ""),
         "year": chunk.get("year", ""),
@@ -138,6 +141,14 @@ def build_payload(chunk: dict) -> dict:
         "text": chunk.get("text", ""),
         "approx_tokens": int(chunk.get("approx_tokens", 0)),
     }
+    # Parent-child fields (only present when --parent-child preprocessing was used)
+    if chunk.get("chunk_type"):
+        payload["chunk_type"] = chunk["chunk_type"]
+    if chunk.get("parent_text"):
+        payload["parent_text"] = chunk["parent_text"]
+    if chunk.get("parent_chunk_id"):
+        payload["parent_chunk_id"] = chunk["parent_chunk_id"]
+    return payload
 
 
 def ingest_chunks(

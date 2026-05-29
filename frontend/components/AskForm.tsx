@@ -16,11 +16,12 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 const SOURCE_FILTERS = [
-  { value: null,              label: "Wszystkie źródła" },
-  { value: "legislation",     label: "Tylko ustawy" },
-  { value: "judgment_nsa",    label: "Tylko NSA/WSA" },
-  { value: "judgment_sn",     label: "Tylko SN" },
-  { value: "judgment_tk",     label: "Tylko TK" },
+  { value: null,                 label: "Wszystkie źródła" },
+  { value: "legislation",        label: "Tylko ustawy" },
+  { value: "judgment_nsa",       label: "Tylko NSA/WSA" },
+  { value: "judgment_sn",        label: "Tylko SN" },
+  { value: "judgment_tk",        label: "Tylko TK" },
+  { value: "tax_interpretation", label: "Interpretacje KIS" },
 ] as const;
 
 export function AskForm({ onSubmit, loading }: AskFormProps) {

@@ -8,18 +8,28 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-SourceType = Literal["legislation", "judgment_nsa", "judgment_sn", "judgment_tk", "judgment_common", "judgment_kio", "unknown"]
+SourceType = Literal[
+    "legislation",
+    "judgment_nsa",
+    "judgment_sn",
+    "judgment_tk",
+    "judgment_common",
+    "judgment_kio",
+    "tax_interpretation",
+    "unknown",
+]
 
 
 def publisher_to_source_type(publisher: str) -> SourceType:
     mapping = {
-        "ADMINISTRATIVE": "judgment_nsa",
-        "SUPREME": "judgment_sn",
-        "CONSTITUTIONAL_TRIBUNAL": "judgment_tk",
-        "COMMON": "judgment_common",
-        "NATIONAL_APPEAL_CHAMBER": "judgment_kio",
-        "WDU": "legislation",
-        "WMP": "legislation",
+        "ADMINISTRATIVE":         "judgment_nsa",
+        "SUPREME":                "judgment_sn",
+        "CONSTITUTIONAL_TRIBUNAL":"judgment_tk",
+        "COMMON":                 "judgment_common",
+        "NATIONAL_APPEAL_CHAMBER":"judgment_kio",
+        "WDU":                    "legislation",
+        "WMP":                    "legislation",
+        "KIS":                    "tax_interpretation",
     }
     return mapping.get(publisher, "unknown")
 
@@ -105,6 +115,7 @@ class SourceBreakdown(BaseModel):
     judgment_tk: int = 0
     judgment_common: int = 0
     judgment_kio: int = 0
+    tax_interpretation: int = 0
     total: int = 0
 
 
