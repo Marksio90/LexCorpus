@@ -22,5 +22,6 @@ export const config = {
     "/account/:path*",
     "/upgrade/:path*",
     "/alerts/:path*",
+    "/draft/:path*",
   ],
 };
