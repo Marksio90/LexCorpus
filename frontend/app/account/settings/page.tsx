@@ -148,6 +148,13 @@ export default function AccountSettingsPage() {
                     Alerty prawne →
                   </a>
                 </li>
+                {tier === "kancelaria" && (
+                  <li>
+                    <a href="/account/widget" className="text-blue-600 dark:text-blue-400 hover:underline">
+                      Widget embed →
+                    </a>
+                  </li>
+                )}
                 {(tier === "pro" || tier === "kancelaria") && (
                   <li>
                     <a href="/api/stripe/portal" className="text-blue-600 dark:text-blue-400 hover:underline">
