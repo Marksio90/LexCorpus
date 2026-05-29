@@ -6,7 +6,7 @@ import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
 import { askQuestionStream } from "@/lib/api";
 import { saveToHistory } from "@/lib/history";
-import type { AskResponse, SourceDocument } from "@/lib/types";
+import type { AskResponse, SourceDocument, SourceType } from "@/lib/types";
 
 export default function AskPage() {
   const [response, setResponse] = useState<AskResponse | null>(null);
@@ -20,7 +20,7 @@ export default function AskPage() {
   const sourcesRef = useRef<SourceDocument[]>([]);
   const retrievalRef = useRef(false);
 
-  const handleAsk = useCallback(async (question: string) => {
+  const handleAsk = useCallback(async (question: string, sourceType?: SourceType | null) => {
     setLoading(true);
     setError(null);
     setResponse(null);
@@ -59,7 +59,7 @@ export default function AskPage() {
           setStreamingText(null);
           setLoading(false);
         },
-      });
+      }, undefined, sourceType ? { source_type_filter: sourceType } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
       setStreamingText(null);

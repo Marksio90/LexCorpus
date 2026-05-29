@@ -135,7 +135,12 @@ def main() -> None:
     from rag.retriever import LegalRetriever
 
     log.info("Loading retriever …")
-    retriever = LegalRetriever(qdrant=args.qdrant, collection=args.collection, model_name=args.model)
+    retriever = LegalRetriever(
+        qdrant=args.qdrant,
+        collection=args.collection,
+        model_name=args.model,
+        rerank=False,  # disabled in eval for speed — pure retrieval quality
+    )
 
     questions = load_questions(args.questions)
     log.info("Loaded %d questions", len(questions))

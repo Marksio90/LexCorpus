@@ -2,8 +2,10 @@
 
 import { useState, useRef, useCallback } from "react";
 
+import type { SourceType } from "@/lib/types";
+
 interface AskFormProps {
-  onSubmit: (question: string) => void;
+  onSubmit: (question: string, sourceType?: SourceType | null) => void;
   loading: boolean;
 }
 
@@ -13,8 +15,17 @@ const EXAMPLE_QUESTIONS = [
   "Jakie są zasady urlopu macierzyńskiego?",
 ];
 
+const SOURCE_FILTERS = [
+  { value: null,              label: "Wszystkie źródła" },
+  { value: "legislation",     label: "Tylko ustawy" },
+  { value: "judgment_nsa",    label: "Tylko NSA/WSA" },
+  { value: "judgment_sn",     label: "Tylko SN" },
+  { value: "judgment_tk",     label: "Tylko TK" },
+] as const;
+
 export function AskForm({ onSubmit, loading }: AskFormProps) {
   const [question, setQuestion] = useState("");
+  const [sourceType, setSourceType] = useState<SourceType | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = useCallback(
@@ -22,9 +33,9 @@ export function AskForm({ onSubmit, loading }: AskFormProps) {
       e.preventDefault();
       const q = question.trim();
       if (!q || loading) return;
-      onSubmit(q);
+      onSubmit(q, sourceType);
     },
-    [question, loading, onSubmit]
+    [question, loading, onSubmit, sourceType]
   );
 
   const handleKeyDown = useCallback(
@@ -33,10 +44,10 @@ export function AskForm({ onSubmit, loading }: AskFormProps) {
         e.preventDefault();
         const q = question.trim();
         if (!q || loading) return;
-        onSubmit(q);
+        onSubmit(q, sourceType);
       }
     },
-    [question, loading, onSubmit]
+    [question, loading, onSubmit, sourceType]
   );
 
   const handleExample = (example: string) => {
@@ -60,6 +71,26 @@ export function AskForm({ onSubmit, loading }: AskFormProps) {
         <div className="absolute bottom-3 right-3 text-xs text-slate-400 dark:text-slate-500">
           Ctrl+Enter
         </div>
+      </div>
+
+      {/* Source type filter */}
+      <div className="mt-3 flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-slate-400 dark:text-slate-500">Źródła:</span>
+        {SOURCE_FILTERS.map((f) => (
+          <button
+            key={String(f.value)}
+            type="button"
+            onClick={() => setSourceType(f.value as SourceType | null)}
+            disabled={loading}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors disabled:opacity-50 ${
+              sourceType === f.value
+                ? "bg-blue-600 border-blue-600 text-white"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-blue-400"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Example questions */}

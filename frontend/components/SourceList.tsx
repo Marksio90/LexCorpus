@@ -1,10 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import type { SourceDocument } from "@/lib/types";
+import type { SourceDocument, SourceType } from "@/lib/types";
 
 interface SourceListProps {
   sources: SourceDocument[];
+}
+
+const SOURCE_TYPE_LABELS: Record<SourceType, { label: string; color: string }> = {
+  legislation:        { label: "Ustawa",    color: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" },
+  judgment_nsa:       { label: "NSA/WSA",   color: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300" },
+  judgment_sn:        { label: "SN",        color: "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300" },
+  judgment_tk:        { label: "TK",        color: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" },
+  judgment_common:    { label: "Sąd",       color: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" },
+  judgment_kio:       { label: "KIO",       color: "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300" },
+  unknown:            { label: "Źródło",    color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
+};
+
+function SourceTypeBadge({ type }: { type: SourceType }) {
+  const { label, color } = SOURCE_TYPE_LABELS[type] ?? SOURCE_TYPE_LABELS.unknown;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${color}`}>
+      {label}
+    </span>
+  );
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -73,6 +92,7 @@ function SourceItem({ source, index }: { source: SourceDocument; index: number }
         {/* Main info */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
+            <SourceTypeBadge type={source.source_type ?? "unknown"} />
             <p className="font-medium text-slate-800 dark:text-slate-200 text-sm leading-snug">
               {source.title || source.act_id}
             </p>

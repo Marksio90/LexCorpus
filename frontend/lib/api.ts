@@ -1,4 +1,4 @@
-import type { AskRequest, AskResponse, HealthResponse, SourceDocument } from "./types";
+import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -101,6 +101,21 @@ export async function askQuestion(
   }
 
   return res.json() as Promise<AskResponse>;
+}
+
+export async function searchDocuments(
+  query: string,
+  topK = 10,
+  options?: Partial<Omit<SearchRequest, "query" | "top_k">>
+): Promise<SearchResponse> {
+  const body: SearchRequest = { query, top_k: topK, ...options };
+  const res = await fetch(`${API_URL}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Błąd wyszukiwania: ${res.status}`);
+  return res.json() as Promise<SearchResponse>;
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

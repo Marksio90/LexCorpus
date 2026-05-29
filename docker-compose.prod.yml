@@ -3,6 +3,7 @@
 #
 # Adds nginx reverse proxy with SSL termination.
 # Run deploy.sh first to obtain Let's Encrypt certificates.
+# Ports 8000/3000 are NOT exposed — nginx is the only public entry point.
 
 services:
   nginx:
@@ -22,13 +23,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # In production the frontend API URL points to the public domain via nginx.
-  # Ports are removed — nginx is the only public entry point.
   frontend:
     environment:
       - NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
       - NEXTAUTH_URL=https://${DOMAIN}
-    ports: !reset []
+    expose:
+      - "3000"
 
   api:
-    ports: !reset []
+    expose:
+      - "8000"

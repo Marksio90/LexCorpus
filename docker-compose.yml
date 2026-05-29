@@ -149,7 +149,7 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -177,5 +177,32 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+
+  # Run manually to sync new SAOS judgments:
+  #   docker compose run --rm sync-saos
+  sync-saos:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-sync-saos
+    volumes:
+      - ./data:/app/data
+    profiles: ["sync"]
+    restart: "no"
+    command: >
+      sh -c "
+        python scripts/fetch_saos.py
+          --since-date $$(date -d '7 days ago' +%Y-%m-%d)
+          --output /app/data/raw/
+        && rm -f /app/data/qdrant/.ingested
+        && python rag/ingest.py
+          --input /app/data/processed/chunks.jsonl
+          --qdrant http://qdrant:6333
+          --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+        && touch /app/data/qdrant/.ingested
+      "
+    depends_on:
+      qdrant:
+        condition: service_healthy
 
 volumes: {}
