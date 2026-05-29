@@ -14,6 +14,73 @@ services:
       timeout: 5s
       retries: 5
 
+  fetch:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-fetch
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+    command: >
+      sh -c "
+        if ls /app/data/raw/acts_*.jsonl 1>/dev/null 2>&1; then
+          echo 'Raw data already exists — skipping fetch.';
+        else
+          python scripts/fetch_isap.py
+            --year ${FETCH_YEAR:-2024}
+            --output /app/data/raw/;
+        fi
+      "
+
+  preprocess:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-preprocess
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      fetch:
+        condition: service_completed_successfully
+    restart: "no"
+    command: >
+      sh -c "
+        if [ -f /app/data/processed/chunks.jsonl ]; then
+          echo 'Processed chunks already exist — skipping preprocess.';
+        else
+          python scripts/preprocess.py
+            --input /app/data/raw/
+            --output /app/data/processed/;
+        fi
+      "
+
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-ingest
+    environment:
+      - QDRANT_PATH=http://qdrant:6333
+      - QDRANT_COLLECTION=lexcorpus
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+      - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      preprocess:
+        condition: service_completed_successfully
+    restart: "no"
+    command: >
+      sh -c "
+        python rag/ingest.py
+          --input /app/data/processed/chunks.jsonl
+          --qdrant http://qdrant:6333
+          --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2};
+      "
+
   api:
     build:
       context: .
@@ -31,6 +98,8 @@ services:
     depends_on:
       qdrant:
         condition: service_healthy
+      ingest:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
