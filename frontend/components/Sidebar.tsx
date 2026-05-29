@@ -15,7 +15,7 @@ export function Sidebar({ open, onClose, onSelectQuestion }: SidebarProps) {
 
   useEffect(() => {
     if (open) {
-      setHistory(getHistory());
+      getHistory().then(setHistory);
     }
   }, [open]);
 

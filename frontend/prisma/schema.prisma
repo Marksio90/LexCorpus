@@ -55,6 +55,7 @@ model User {
   accounts   Account[]
   sessions   Session[]
   usageLogs  UsageLog[]
+  queryLogs  QueryLog[]
 }
 
 model VerificationToken {
@@ -63,6 +64,23 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ── Query history ─────────────────────────────────────────────────────────────
+
+model QueryLog {
+  id            String   @id @default(cuid())
+  userId        String
+  createdAt     DateTime @default(now())
+  question      String
+  answer        String
+  sources       String   // JSON blob: SourceDocument[]
+  modelUsed     String
+  retrievalUsed Boolean  @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ── Usage tracking ────────────────────────────────────────────────────────────

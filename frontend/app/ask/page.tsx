@@ -61,7 +61,7 @@ export default function AskPage() {
           };
           setStreamingText(null);
           setResponse(result);
-          saveToHistory(result);
+          void saveToHistory(result);
           setLoading(false);
         },
         onError(detail) {
