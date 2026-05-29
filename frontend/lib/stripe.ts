@@ -1,12 +1,10 @@
 import Stripe from "stripe";
 
-// Inicjowany tylko server-side (sekret nie trafia do przeglądarki)
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+let _stripe: Stripe | null = null;
 
-// Plany muszą być wcześniej utworzone w dashboardzie Stripe.
-// Ustaw STRIPE_PRICE_PRO i STRIPE_PRICE_KANCELARIA w .env
-if (!process.env.STRIPE_PRICE_PRO || !process.env.STRIPE_PRICE_KANCELARIA) {
-  console.warn("[stripe] STRIPE_PRICE_PRO lub STRIPE_PRICE_KANCELARIA nie jest ustawiony — checkout będzie niedostępny");
+export function getStripe(): Stripe {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+  return _stripe;
 }
 
 export const STRIPE_PRICES: Record<string, string> = {

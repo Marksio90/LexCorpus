@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 // Mapa Stripe price ID → tier
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Webhook error";
     return NextResponse.json({ error: msg }, { status: 400 });
@@ -50,10 +50,10 @@ export async function POST(req: NextRequest) {
     case "checkout.session.completed": {
       const cs = event.data.object as Stripe.Checkout.Session;
       if (cs.mode === "subscription" && typeof cs.subscription === "string") {
-        const sub = await stripe.subscriptions.retrieve(cs.subscription);
+        const sub = await getStripe().subscriptions.retrieve(cs.subscription);
         // Backfill userId metadata from checkout if missing
         if (!sub.metadata?.userId && cs.metadata?.userId) {
-          await stripe.subscriptions.update(cs.subscription, {
+          await getStripe().subscriptions.update(cs.subscription, {
             metadata: { userId: cs.metadata.userId, plan: cs.metadata.plan ?? "" },
           });
           sub.metadata = cs.metadata;
