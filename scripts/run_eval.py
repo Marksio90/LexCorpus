@@ -104,6 +104,7 @@ def main() -> None:
     parser.add_argument("--questions", type=Path, default=Path("data/eval_questions.jsonl"))
     parser.add_argument("--qdrant", default="data/qdrant")
     parser.add_argument("--collection", default="lexcorpus")
+    parser.add_argument("--model", default="paraphrase-multilingual-MiniLM-L12-v2")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--no-llm", action="store_true", help="Skip Claude API calls (retrieval scoring only)")
     parser.add_argument("--output", type=Path, default=Path("data/eval_results.json"))
@@ -112,7 +113,7 @@ def main() -> None:
     from rag.retriever import LegalRetriever
 
     log.info("Loading retriever …")
-    retriever = LegalRetriever(qdrant=args.qdrant, collection=args.collection)
+    retriever = LegalRetriever(qdrant=args.qdrant, collection=args.collection, model_name=args.model)
 
     questions = load_questions(args.questions)
     log.info("Loaded %d questions", len(questions))
