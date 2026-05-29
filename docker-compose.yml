@@ -24,14 +24,20 @@ services:
     volumes:
       - ./data:/app/data
     restart: "no"
+    environment:
+      - FETCH_YEAR=${FETCH_YEAR:-}
+      - FETCH_YEAR_FROM=${FETCH_YEAR_FROM:-2024}
+      - FETCH_YEAR_TO=${FETCH_YEAR_TO:-2025}
     command: >
       sh -c "
         if ls /app/data/raw/acts_*.jsonl 1>/dev/null 2>&1; then
           echo 'Raw data already exists — skipping fetch.';
         else
-          python scripts/fetch_isap.py
-            --year ${FETCH_YEAR:-2024}
-            --output /app/data/raw/;
+          if [ -n \"$$FETCH_YEAR\" ]; then
+            python scripts/fetch_isap.py --year $$FETCH_YEAR --output /app/data/raw/;
+          else
+            python scripts/fetch_isap.py --year-from $$FETCH_YEAR_FROM --year-to $$FETCH_YEAR_TO --output /app/data/raw/;
+          fi
         fi
       "
 

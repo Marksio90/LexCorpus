@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir \
     openai \
     beautifulsoup4 \
     lxml \
-    pydantic
+    pydantic \
+    pymupdf
 
 COPY . .
 
