@@ -18,6 +18,14 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/@libsql ./node_modules/@libsql
+COPY --from=builder /app/entrypoint.sh ./
+
+RUN chmod +x entrypoint.sh
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["./entrypoint.sh"]
