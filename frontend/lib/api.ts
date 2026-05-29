@@ -13,7 +13,8 @@ export async function askQuestionStream(
   question: string,
   topK = 5,
   callbacks: StreamCallbacks,
-  options?: Partial<Omit<AskRequest, "question" | "top_k">>
+  options?: Partial<Omit<AskRequest, "question" | "top_k">>,
+  signal?: AbortSignal
 ): Promise<void> {
   const body: AskRequest = {
     question,
@@ -28,6 +29,7 @@ export async function askQuestionStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!res.ok || !res.body) {
@@ -43,29 +45,33 @@ export async function askQuestionStream(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      try {
-        const event = JSON.parse(line.slice(6));
-        if (event.type === "sources") {
-          callbacks.onSources(event.sources, event.retrieval_used);
-        } else if (event.type === "delta") {
-          callbacks.onDelta(event.text);
-        } else if (event.type === "done") {
-          callbacks.onDone(event.model_used, event.confidence);
-        } else if (event.type === "error") {
-          callbacks.onError(event.detail);
-        }
-      } catch { /* malformed SSE line, skip */ }
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === "sources") {
+            callbacks.onSources(event.sources, event.retrieval_used);
+          } else if (event.type === "delta") {
+            callbacks.onDelta(event.text);
+          } else if (event.type === "done") {
+            callbacks.onDone(event.model_used, event.confidence);
+          } else if (event.type === "error") {
+            callbacks.onError(event.detail);
+          }
+        } catch { /* malformed SSE line, skip */ }
+      }
     }
+  } finally {
+    reader.cancel();
   }
 }
 

@@ -14,19 +14,20 @@ export async function GET() {
   const since7  = new Date(Date.now() - 7  * 86_400_000);
 
   const [
-    totalQueries,
-    queriesLast7,
-    queriesLast30,
+    recentLogs,
     dailyUsage,
-    topSources,
     alertsTotal,
     alertsUnread,
     registrySubs,
     expertRequests,
   ] = await Promise.all([
-    prisma.queryLog.count({ where: { userId } }),
-    prisma.queryLog.count({ where: { userId, createdAt: { gte: since7 } } }),
-    prisma.queryLog.count({ where: { userId, createdAt: { gte: since30 } } }),
+    // One query for all count variants + sources — filter in JS
+    prisma.queryLog.findMany({
+      where:   { userId, createdAt: { gte: since30 } },
+      select:  { createdAt: true, sources: true },
+      orderBy: { createdAt: "desc" },
+      take:    5000,
+    }),
 
     // Daily query counts for the last 30 days
     prisma.usageLog.findMany({
@@ -34,17 +35,20 @@ export async function GET() {
       orderBy: { date: "asc" },
     }),
 
-    // Top source types from recent query logs (parse JSON sources field)
-    prisma.queryLog.findMany({
-      where:   { userId, createdAt: { gte: since30 } },
-      select:  { sources: true },
-      take:    200,
-    }),
-
     prisma.legalAlert.count({ where: { userId } }),
     prisma.legalAlert.count({ where: { userId, readAt: null } }),
     prisma.registrySubscription.count({ where: { userId } }),
     prisma.expertRequest.count({ where: { requesterId: userId } }),
+  ]);
+
+  // Derive counts from single query result
+  const queriesLast30 = recentLogs.length;
+  const queriesLast7  = recentLogs.filter((l) => l.createdAt >= since7).length;
+  const [totalQueries, topSources] = await Promise.all([
+    queriesLast30 < 5000
+      ? Promise.resolve(queriesLast30)  // no additional query needed when under limit
+      : prisma.queryLog.count({ where: { userId } }),
+    Promise.resolve(recentLogs.slice(0, 200)),
   ]);
 
   // Count source types from sources JSON

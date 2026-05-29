@@ -142,8 +142,39 @@ def _client_ip(request: Request) -> str:
 # ── API token auth (plan kancelaria) ─────────────────────────────────────────
 import hashlib
 import sqlite3
+import threading
+from queue import Queue, Empty
 
 _DB_PATH = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+
+class _SqlitePool:
+    """Thread-safe SQLite connection pool to avoid per-request connect overhead."""
+    def __init__(self, db_path: str, size: int = 8) -> None:
+        self._pool: Queue = Queue(maxsize=size)
+        for _ in range(size):
+            conn = sqlite3.connect(db_path, timeout=10, check_same_thread=False)
+            conn.execute("PRAGMA journal_mode=WAL")
+            self._pool.put(conn)
+
+    def get(self) -> sqlite3.Connection:
+        try:
+            return self._pool.get(timeout=5)
+        except Empty:
+            raise RuntimeError("SQLite pool exhausted")
+
+    def put(self, conn: sqlite3.Connection) -> None:
+        self._pool.put(conn)
+
+_db_pool: _SqlitePool | None = None
+_db_pool_lock = threading.Lock()
+
+def _get_db_pool() -> _SqlitePool:
+    global _db_pool
+    if _db_pool is None:
+        with _db_pool_lock:
+            if _db_pool is None:
+                _db_pool = _SqlitePool(_DB_PATH)
+    return _db_pool
 
 def _verify_api_token(request: Request) -> str | None:
     """
@@ -156,8 +187,10 @@ def _verify_api_token(request: Request) -> str | None:
         return None
     plain = auth[len("Bearer "):]
     token_hash = hashlib.sha256(plain.encode()).hexdigest()
+    pool = _get_db_pool()
+    conn = pool.get()
+    row = None
     try:
-        conn = sqlite3.connect(_DB_PATH)
         row = conn.execute(
             "SELECT id, userId FROM ApiToken WHERE tokenHash=? AND revokedAt IS NULL",
             (token_hash,),
@@ -168,10 +201,11 @@ def _verify_api_token(request: Request) -> str | None:
                 (row[0],),
             )
             conn.commit()
-        conn.close()
     except Exception as e:
         log.warning("Błąd weryfikacji tokenu API: %s", e)
         row = None
+    finally:
+        pool.put(conn)
     if row is None and plain:
         raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
     return row[1] if row else None
@@ -707,18 +741,23 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.2,
-                max_tokens=1024,
+                max_tokens=1500,
                 stream=True,
+                timeout=90,
             )
 
+            deadline = time.time() + 90
             for chunk in stream:
+                if time.time() > deadline:
+                    yield sse({"type": "error", "detail": "Generacja odpowiedzi przekroczyła limit czasu."})
+                    return
                 delta = chunk.choices[0].delta.content
                 if delta:
                     yield sse({"type": "delta", "text": delta})
 
         except Exception as exc:
             log.error("Streaming generation failed: %s", exc)
-            yield sse({"type": "error", "detail": str(exc)})
+            yield sse({"type": "error", "detail": "Błąd generowania odpowiedzi."})
             return
 
         confidence = _compute_confidence(retrieved_chunks)

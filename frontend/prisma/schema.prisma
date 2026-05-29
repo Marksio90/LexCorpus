@@ -165,7 +165,8 @@ model PrivateDocument {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, status])
+  @@index([uploadedAt(sort: Desc)])
 }
 
 // ── Shareable reports ─────────────────────────────────────────────────────────

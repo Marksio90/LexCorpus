@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { AskForm } from "@/components/AskForm";
 import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
@@ -22,8 +22,17 @@ export default function AskPage() {
   const sourcesRef = useRef<SourceDocument[]>([]);
   const retrievalRef = useRef(false);
   const confidenceRef = useRef<AnswerConfidence | undefined>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cleanup any in-flight stream when component unmounts
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const handleAsk = useCallback(async (question: string, sourceType?: SourceType | null) => {
+    // Cancel any previous in-flight request
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setLoading(true);
     setError(null);
     setResponse(null);
@@ -35,7 +44,7 @@ export default function AskPage() {
 
     try {
       // Sprawdź i inkrementuj dzienny limit
-      const usageRes = await fetch("/api/usage", { method: "POST" });
+      const usageRes = await fetch("/api/usage", { method: "POST", signal });
       if (usageRes.status === 429) {
         const data = await usageRes.json();
         setError(data.error + ` (${data.used}/${data.limit}). Przejdź na plan Pro aby kontynuować.`);
@@ -74,8 +83,9 @@ export default function AskPage() {
           setStreamingText(null);
           setLoading(false);
         },
-      }, sourceType ? { source_type_filter: sourceType } : undefined);
+      }, sourceType ? { source_type_filter: sourceType } : undefined, signal);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return; // user cancelled
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
       setStreamingText(null);
       setLoading(false);
