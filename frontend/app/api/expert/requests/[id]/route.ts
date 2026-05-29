@@ -6,6 +6,10 @@ import { sendMail } from "@/lib/mailer";
 
 const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
+function escHtml(s: string): string {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 // PATCH — expert responds; or requester closes
 export async function PATCH(
   req: NextRequest,
@@ -50,7 +54,7 @@ export async function PATCH(
     <h1 style="color:#1d4ed8;font-size:20px;margin:0 0 16px"><span style="opacity:.7">Lex</span>Corpus</h1>
     <p style="color:#0f172a;font-size:15px;margin:0 0 12px">Ekspert odpowiedział na Twoje pytanie prawne.</p>
     <blockquote style="border-left:3px solid #2563eb;padding:12px 16px;margin:0 0 20px;color:#475569;font-size:14px">
-      ${request.question.slice(0, 200)}${request.question.length > 200 ? "…" : ""}
+      ${escHtml(request.question.slice(0, 200))}${request.question.length > 200 ? "…" : ""}
     </blockquote>
     <a href="${BASE_URL}/expert" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">
       Zobacz odpowiedź →

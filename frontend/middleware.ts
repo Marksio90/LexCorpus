@@ -29,5 +29,6 @@ export const config = {
     "/precedents/:path*",
     "/expert/:path*",
     "/analytics/:path*",
+    "/documents/:path*",
   ],
 };
