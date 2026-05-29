@@ -6,7 +6,7 @@ WORKDIR /app
 ENV NEXTAUTH_SECRET=build-time-placeholder-not-used-at-runtime
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --fetch-retries=5 --fetch-retry-mintimeout=10000 --fetch-retry-maxtimeout=60000
 
 COPY . .
 RUN npx prisma generate
