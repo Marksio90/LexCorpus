@@ -59,9 +59,12 @@ training:
   group_by_length: true            # speeds up training by grouping similar-length sequences
 
 data:
-  dataset_path: "./data/dataset/instruction"
+  # Primary: use synthetic chat-format data from generate_training_data.py
+  # Fallback: legacy instruction format from build_dataset.py
+  dataset_path: "./data/dataset/synthetic/train.jsonl"
   max_samples_train: null          # null = use all; set integer to subsample
-  max_samples_eval: 1000
+  max_samples_eval: 500
+  # Used only for legacy instruction format — chat format uses tokenizer.apply_chat_template
   prompt_template: |
     ### Instrukcja:
     {instruction}

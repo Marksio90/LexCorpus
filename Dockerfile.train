@@ -1,0 +1,40 @@
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python training deps
+RUN pip install --no-cache-dir \
+    "transformers>=4.41.0" \
+    "peft>=0.11.0" \
+    "bitsandbytes>=0.43.0" \
+    "accelerate>=0.30.0" \
+    "datasets>=2.19.0" \
+    "trl>=0.9.0" \
+    "sentencepiece>=0.2.0" \
+    "protobuf>=4.25.0" \
+    pyyaml \
+    tqdm \
+    openai \
+    python-dotenv
+
+COPY scripts/ scripts/
+COPY training/ training/
+COPY data/ data/
+
+ENV PYTHONPATH=/app
+ENV TOKENIZERS_PARALLELISM=false
+
+# Default: generate synthetic data then train
+CMD ["bash", "-c", \
+    "python scripts/generate_training_data.py \
+        --input data/processed/chunks.jsonl \
+        --output data/dataset/synthetic \
+        --max-chunks ${MAX_CHUNKS:-5000} \
+        --questions-per-chunk ${QUESTIONS_PER_CHUNK:-2} \
+    && python training/train.py \
+        --data data/dataset/synthetic/train.jsonl"]

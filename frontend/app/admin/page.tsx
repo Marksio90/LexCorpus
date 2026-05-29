@@ -2,26 +2,31 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { fetchHealth, fetchStats } from "@/lib/api";
+import { fetchHealth, fetchStats, fetchSyncStatus, triggerSync } from "@/lib/api";
 import { AdminStats } from "@/components/AdminStats";
-import type { HealthResponse, StatsResponse } from "@/lib/types";
+import type { HealthResponse, StatsResponse, SyncStatus } from "@/lib/types";
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [triggerLoading, setTriggerLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [healthData, statsData] = await Promise.allSettled([fetchHealth(), fetchStats()]);
+      const [healthData, statsData, syncData] = await Promise.allSettled([
+        fetchHealth(), fetchStats(), fetchSyncStatus(),
+      ]);
       if (healthData.status === "fulfilled") setHealth(healthData.value);
       else throw new Error((healthData.reason as Error).message);
       if (statsData.status === "fulfilled") setStats(statsData.value);
+      if (syncData.status === "fulfilled") setSyncStatus(syncData.value);
       setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nie można pobrać danych.");
@@ -29,6 +34,18 @@ export default function AdminPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleTriggerSync = useCallback(async () => {
+    setTriggerLoading(true);
+    try {
+      await triggerSync();
+      setTimeout(refresh, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Błąd uruchamiania sync.");
+    } finally {
+      setTriggerLoading(false);
+    }
+  }, [refresh]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -132,7 +149,13 @@ export default function AdminPage() {
         )}
 
         {health ? (
-          <AdminStats health={health} stats={stats} />
+          <AdminStats
+            health={health}
+            stats={stats}
+            syncStatus={syncStatus}
+            onTriggerSync={handleTriggerSync}
+            triggerLoading={triggerLoading}
+          />
         ) : !error ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
