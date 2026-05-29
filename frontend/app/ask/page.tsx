@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { AskForm } from "@/components/AskForm";
 import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
+import { UsageBar } from "@/components/UsageBar";
 import { askQuestionStream } from "@/lib/api";
 import { saveToHistory } from "@/lib/history";
 import type { AskResponse, SourceDocument, SourceType } from "@/lib/types";
@@ -30,6 +31,15 @@ export default function AskPage() {
     retrievalRef.current = false;
 
     try {
+      // Sprawdź i inkrementuj dzienny limit
+      const usageRes = await fetch("/api/usage", { method: "POST" });
+      if (usageRes.status === 429) {
+        const data = await usageRes.json();
+        setError(data.error + ` (${data.used}/${data.limit}). Przejdź na plan Pro aby kontynuować.`);
+        setLoading(false);
+        return;
+      }
+
       await askQuestionStream(question, 5, {
         onSources(sources, retrievalUsed) {
           sourcesRef.current = sources;
@@ -109,22 +119,19 @@ export default function AskPage() {
               — Polski AI Prawny
             </span>
           </div>
-          <div className="ml-auto flex gap-2">
-            <a href="/search" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              Szukaj
-            </a>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <a href="/compare" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              Porównaj
-            </a>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <a href="/history" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              Historia
-            </a>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <a href="/admin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              Admin
-            </a>
+          <div className="ml-auto flex items-center gap-3">
+            <UsageBar />
+            <div className="hidden sm:flex items-center gap-2 text-sm">
+              <a href="/search" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Szukaj</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <a href="/compare" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Porównaj</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <a href="/history" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Historia</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <a href="/admin" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Admin</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <a href="/api/auth/signout" className="text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors">Wyloguj</a>
+            </div>
           </div>
         </header>
 
