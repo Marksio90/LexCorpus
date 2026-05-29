@@ -32,9 +32,10 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
+import json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.schemas import AskRequest, AskResponse, ErrorResponse, HealthResponse, SourceDocument
 
@@ -382,6 +383,111 @@ async def ask(request: AskRequest) -> AskResponse:
         sources=sources,
         model_used=model_used,
         retrieval_used=retrieval_used,
+    )
+
+
+@app.post("/ask/stream")
+async def ask_stream(request: AskRequest) -> StreamingResponse:
+    """
+    Streaming version of /ask using Server-Sent Events.
+
+    Event types:
+      data: {"type": "sources", "sources": [...], "retrieval_used": bool}
+      data: {"type": "delta",   "text": "..."}
+      data: {"type": "done",    "model_used": "..."}
+      data: {"type": "error",   "detail": "..."}
+    """
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question must not be empty")
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        def sse(payload: dict) -> str:
+            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+        # Step 1: RAG retrieval (blocking, but fast)
+        retrieved_chunks = []
+        context_str = ""
+        retrieval_used = False
+
+        if request.use_rag:
+            try:
+                retriever = _init_retriever()
+                chunks = retriever.retrieve(
+                    query=question,
+                    top_k=request.top_k,
+                    year_filter=request.year_filter,
+                    publisher_filter=request.publisher_filter,
+                )
+                context_str = retriever.format_context(chunks, max_chars=3500)
+                retrieved_chunks = chunks
+                retrieval_used = True
+            except Exception as exc:
+                log.warning("RAG retrieval failed in stream: %s", exc)
+
+        sources = [
+            SourceDocument(
+                score=chunk.score,
+                act_id=chunk.act_id,
+                title=chunk.title,
+                year=chunk.year,
+                publisher=chunk.publisher,
+                pos=chunk.pos,
+                url=chunk.url,
+                chunk_index=chunk.chunk_index,
+                total_chunks=chunk.total_chunks,
+                text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
+                citation=chunk.citation(),
+            )
+            for chunk in retrieved_chunks
+        ]
+
+        # Emit sources immediately so the UI can show them while text streams
+        yield sse({"type": "sources", "sources": [s.model_dump() for s in sources], "retrieval_used": retrieval_used})
+
+        # Step 2: Stream the answer
+        prompt = build_prompt(question, context_str)
+        model_used = "unknown"
+
+        if not OPENAI_API_KEY:
+            yield sse({"type": "error", "detail": "OPENAI_API_KEY not set"})
+            return
+
+        try:
+            import openai as _openai
+            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
+            model_used = OPENAI_MODEL
+
+            stream = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+                max_tokens=1024,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield sse({"type": "delta", "text": delta})
+
+        except Exception as exc:
+            log.error("Streaming generation failed: %s", exc)
+            yield sse({"type": "error", "detail": str(exc)})
+            return
+
+        yield sse({"type": "done", "model_used": model_used})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx buffering
+        },
     )
 
 

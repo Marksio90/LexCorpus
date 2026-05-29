@@ -6,6 +6,7 @@ import { SourceList } from "./SourceList";
 
 interface AnswerCardProps {
   response: AskResponse;
+  streaming?: boolean;
 }
 
 /** Replace [1], [2] etc. in answer text with clickable anchor links. */
@@ -43,7 +44,7 @@ function AnswerText({ text, sourceCount }: { text: string; sourceCount: number }
   );
 }
 
-export function AnswerCard({ response }: AnswerCardProps) {
+export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
   const { answer, model_used, retrieval_used, sources, question } = response;
 
   return (
@@ -78,6 +79,9 @@ export function AnswerCard({ response }: AnswerCardProps) {
         </div>
 
         <AnswerText text={answer} sourceCount={sources.length} />
+        {streaming && (
+          <span className="inline-block w-0.5 h-4 ml-0.5 bg-slate-500 dark:bg-slate-400 animate-pulse align-middle" />
+        )}
       </div>
 
       {/* Sources */}
