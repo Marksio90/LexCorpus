@@ -87,11 +87,19 @@ export function Sidebar({ open, onClose, onSelectQuestion }: SidebarProps) {
         {/* Footer links */}
         <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex gap-3 text-sm">
           <a
+            href="/precedents"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
+            onClick={onClose}
+          >
+            Precedensy
+          </a>
+          <span className="text-slate-300 dark:text-slate-600">|</span>
+          <a
             href="/history"
             className="text-blue-600 dark:text-blue-400 hover:underline"
             onClick={onClose}
           >
-            Pełna historia
+            Historia
           </a>
           <span className="text-slate-300 dark:text-slate-600">|</span>
           <a

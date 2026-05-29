@@ -26,5 +26,6 @@ export const config = {
     "/analyze/:path*",
     "/registry/:path*",
     "/timeline/:path*",
+    "/precedents/:path*",
   ],
 };
