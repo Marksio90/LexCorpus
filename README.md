@@ -1,145 +1,169 @@
 # LexCorpus
 
-**Polski system AI do odpowiadania na pytania prawne / Polish Legal AI Q&A System**
+**Polski AI do prawa — RAG nad 636k dokumentami (ISAP + SAOS)**
+
+> Cel: bić GPT-4o na polskich pytaniach prawnych dzięki data-moat + hybrid retrieval.
 
 ---
 
-## Po polsku
-
-### Opis projektu
-
-LexCorpus to otwartoźródłowy projekt budowy systemu sztucznej inteligencji wyspecjalizowanego w polskim prawie. Celem jest stworzenie modelu językowego oraz systemu RAG (Retrieval-Augmented Generation), który odpowiada na pytania prawne lepiej niż ogólne modele takie jak GPT-4, dzięki fine-tuningowi na danych z Internetowego Systemu Aktów Prawnych (ISAP).
-
-### Źródło danych
-
-- **ISAP** (Internetowy System Aktów Prawnych): https://isap.sejm.gov.pl
-- **API Sejmu RP**: https://api.sejm.gov.pl/eli/acts
-- Dane obejmują: ustawy, rozporządzenia, dyrektywy, orzeczenia Trybunału Konstytucyjnego
-
-### Architektura
+## Architektura
 
 ```
-ISAP API → fetch_isap.py → data/raw/*.jsonl
-                         ↓
-               preprocess.py → data/processed/chunks.jsonl
-                         ↓
-               build_dataset.py → HuggingFace Dataset (train/val/test)
-                         ↓
-               train.py (QLoRA) → output/lexcorpus-model
-                         ↓
-               ingest.py → Qdrant (wektory)
-                         ↓
-               api/main.py → POST /ask → odpowiedź + źródła
+ISAP API  ──┐
+SAOS API  ──┴─► preprocess ──► Qdrant (hybrid dense+sparse) ──► FastAPI ──► Next.js
 ```
 
-### Instalacja
+**Jeden `docker compose up` robi wszystko** (sentinel files zapobiegają powtórnemu przetwarzaniu):
+
+| Krok | Kontener | Co robi |
+|------|----------|---------|
+| 1 | `fetch` | Pobiera akty prawne z ISAP (JSONL) |
+| 2 | `fetch-saos` | Pobiera orzeczenia z SAOS (JSONL) |
+| 3 | `preprocess` | Chunking + wykrywanie sekcji SAOS → `chunks.jsonl` |
+| 4 | `ingest` | Embedduje i ładuje do Qdrant; sentinel: `data/qdrant/.ingested` |
+| 5 | `api` | FastAPI na :8000 |
+| 6 | `frontend` | Next.js na :3000 |
+
+---
+
+## Szybki start
 
 ```bash
-pip install -e .
-```
-
-### Użycie
-
-1. Pobierz dane z ISAP:
-   ```bash
-   python scripts/fetch_isap.py --year 2023 --output data/raw/
-   ```
-
-2. Wstępnie przetwórz dane:
-   ```bash
-   python scripts/preprocess.py --input data/raw/ --output data/processed/
-   ```
-
-3. Zbuduj dataset do fine-tuningu:
-   ```bash
-   python scripts/build_dataset.py --input data/processed/ --output data/dataset/
-   ```
-
-4. Fine-tuning (QLoRA):
-   ```bash
-   python training/train.py
-   ```
-
-5. Indeksuj dokumenty w Qdrant:
-   ```bash
-   python rag/ingest.py --input data/processed/chunks.jsonl
-   ```
-
-6. Uruchom API:
-   ```bash
-   uvicorn api.main:app --host 0.0.0.0 --port 8000
-   ```
-
-7. Zadaj pytanie:
-   ```bash
-   curl -X POST http://localhost:8000/ask \
-     -H "Content-Type: application/json" \
-     -d '{"question": "Jakie są prawa pracownika przy wypowiedzeniu umowy o pracę?"}'
-   ```
-
-### Ewaluacja
-
-```bash
-python scripts/evaluate.py --model output/lexcorpus-model --dataset data/dataset/test
+cp .env.example .env        # uzupełnij OPENAI_API_KEY
+docker compose up
+# → http://localhost:3000
 ```
 
 ---
 
-## In English
+## RAG pipeline
 
-### Project Description
+1. **Query expansion** — GPT-4o-mini generuje 2 alternatywne sformułowania
+2. **Hybrid search** — dense (`mmlw-retrieval-roberta-large`) + sparse BM25, fusion RRF
+3. **Dedup** — po `(act_id, chunk_index)`, najwyższy score wygrywa
+4. **Cross-encoder rerank** — `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`
+5. **Context expand** — pobiera chunk±1 z Qdrant dla lepszego kontekstu
 
-LexCorpus is an open-source Polish Legal AI system. The goal is to fine-tune a Polish language model (Bielik-7B) using QLoRA and build a RAG pipeline over Polish legal acts from ISAP — Poland's official legal database — to answer legal questions more accurately than general-purpose models like GPT-4.
+---
 
-### Data Sources
-
-- **ISAP** (Internet System of Legal Acts): https://isap.sejm.gov.pl
-- **Sejm REST API**: https://api.sejm.gov.pl/eli/acts
-- Coverage: statutes, ordinances, constitutional tribunal rulings
-
-### Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Data fetching | `httpx`, `bs4`, `lxml` |
-| Preprocessing | custom chunker, ~512 tokens / chunk |
-| Embeddings | `sdadas/mmlw-retrieval-roberta-large` |
-| Vector store | Qdrant |
-| Fine-tuning | QLoRA (r=16, α=32), PEFT + bitsandbytes |
-| Base model | `speakleash/Bielik-7B-Instruct-v0.1` |
-| API | FastAPI + Uvicorn |
-| Evaluation | ROUGE, BERTScore, custom legal accuracy |
-
-### Repository Structure
+## Struktura katalogów
 
 ```
-LexCorpus/
-├── README.md
-├── pyproject.toml
-├── .gitignore
-├── data/                     # raw + processed data (gitignored)
-├── scripts/
-│   ├── fetch_isap.py         # ISAP scraper
-│   ├── preprocess.py         # text cleaner + chunker
-│   ├── build_dataset.py      # HuggingFace Dataset builder
-│   └── evaluate.py           # ROUGE / BERTScore / legal accuracy
-├── training/
-│   ├── config.yaml           # LoRA hyperparameters
-│   └── train.py              # QLoRA training script
-├── rag/
-│   ├── ingest.py             # embed + store in Qdrant
-│   └── retriever.py          # semantic search
-├── api/
-│   ├── main.py               # FastAPI application
-│   └── schemas.py            # Pydantic models
-└── notebooks/
-    └── exploration.ipynb     # exploratory data analysis + RAG demo
+api/              FastAPI (main.py, schemas.py, sync.py)
+rag/              retriever.py — hybrid search + rerank
+                  ingest.py   — embed + store
+scripts/
+  fetch_isap.py       ISAP scraper
+  fetch_saos.py       SAOS scraper
+  preprocess.py       chunker + SAOS section detector
+  run_eval.py         ewaluacja RAG na golden questions (45 pytań)
+  generate_training_data.py  synteza danych Q&A przez GPT-4o-mini
+  ingest_sample.py    CI helper — syntetyczne dane do testów
+training/
+  train.py            QLoRA fine-tuning (Bielik-7B / Mistral-7B)
+  config.yaml         hiperparametry (r=16, 4-bit NF4)
+frontend/         Next.js 14 + TypeScript
+  app/ask/          chat z SSE streaming
+  app/search/       wyszukiwanie dokumentów
+  app/compare/      tryb porównania dwóch źródeł
+  app/history/      historia zapytań (SQLite, per-user)
+  app/upgrade/      strona cennikowa (Stripe)
+  app/admin/        statystyki kolekcji + sync
+  app/login/        magic-link auth (NextAuth)
+nginx/            nginx.conf — reverse proxy dla produkcji
 ```
 
-### License
+---
 
-MIT License — see LICENSE file.
+## API endpoints
 
-### Contributing
+| Method | Path | Opis |
+|--------|------|------|
+| `GET`  | `/health` | Status Qdrant + modeli |
+| `POST` | `/ask` | RAG + LLM odpowiedź (JSON) |
+| `POST` | `/ask/stream` | SSE: `sources → delta* → done\|error` |
+| `POST` | `/search` | Samo wyszukiwanie (bez LLM) |
+| `GET`  | `/stats` | Liczba chunków per publisher |
+| `GET`  | `/sync/status` | Status auto-sync SAOS |
+| `POST` | `/sync/trigger` | Ręczne wyzwolenie sync |
 
-Pull requests welcome. Please open an issue first to discuss significant changes.
+---
+
+## Typy źródeł
+
+| Typ | Publisher (Qdrant) | Źródło |
+|-----|--------------------|--------|
+| `legislation` | `WDU` | ISAP |
+| `judgment_nsa` | `ADMINISTRATIVE` | SAOS |
+| `judgment_sn` | `SUPREME` | SAOS |
+| `judgment_tk` | `CONSTITUTIONAL_TRIBUNAL` | SAOS |
+| `judgment_common` | `COMMON` | SAOS |
+| `judgment_kio` | `NATIONAL_APPEAL_CHAMBER` | SAOS |
+
+---
+
+## Ewaluacja
+
+```bash
+python scripts/run_eval.py                   # retrieval + LLM
+python scripts/run_eval.py --no-llm          # samo retrieval (szybkie)
+python scripts/run_eval.py --compare-gpt4    # W/L/T vs GPT-4o baseline
+```
+
+45 pytań złotego zestawu: `data/eval_questions.jsonl` (30 legislacyjnych + 15 orzeczniczych).
+
+---
+
+## Fine-tuning (QLoRA na Bielik-7B)
+
+```bash
+# Krok 1 — dane syntetyczne (CPU, wymaga OPENAI_API_KEY, koszt ~$1.50)
+python scripts/generate_training_data.py \
+    --input data/processed/chunks.jsonl \
+    --output data/dataset/synthetic \
+    --max-chunks 5000
+
+# Krok 2 — trening (GPU, min. 16GB VRAM)
+docker compose run --rm train
+```
+
+---
+
+## Tygodniowy sync SAOS
+
+Automatyczny (APScheduler, domyślnie niedziela 03:00), lub ręcznie:
+
+```bash
+docker compose run --rm sync-saos
+```
+
+---
+
+## Zmienne środowiskowe
+
+Patrz `.env.example`. Kluczowe:
+
+| Zmienna | Domyślnie | Opis |
+|---------|-----------|------|
+| `OPENAI_API_KEY` | — | Wymagane do LLM + query expansion |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model LLM |
+| `EMBEDDING_MODEL` | `sdadas/mmlw-retrieval-roberta-large` | Dense embeddings |
+| `RERANK_ENABLED` | `true` | Cross-encoder reranking |
+| `STRIPE_SECRET_KEY` | — | Płatności (opcjonalne) |
+| `DATABASE_PATH` | `prisma/dev.db` | SQLite — auth + historia |
+
+---
+
+## Produkcja
+
+```bash
+chmod +x deploy.sh && sudo ./deploy.sh
+```
+
+Nginx terminuje SSL. Overlay: `docker-compose.yml` + `docker-compose.prod.yml`.
+
+---
+
+## Licencja
+
+MIT
