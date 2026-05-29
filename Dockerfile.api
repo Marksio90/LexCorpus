@@ -16,7 +16,8 @@ RUN pip install --no-cache-dir \
     beautifulsoup4 \
     lxml \
     pydantic \
-    pymupdf
+    pymupdf \
+    "apscheduler>=3.10"
 
 COPY . .
 

@@ -1,10 +1,13 @@
 "use client";
 
-import type { HealthResponse, StatsResponse, SourceBreakdown } from "@/lib/types";
+import type { HealthResponse, StatsResponse, SourceBreakdown, SyncStatus } from "@/lib/types";
 
 interface AdminStatsProps {
   health: HealthResponse;
   stats: StatsResponse | null;
+  syncStatus: SyncStatus | null;
+  onTriggerSync: () => void;
+  triggerLoading: boolean;
 }
 
 function StatusDot({ ok }: { ok: boolean }) {
@@ -99,7 +102,79 @@ function ConfigPill({ active, label }: { active: boolean; label: string }) {
   );
 }
 
-export function AdminStats({ health, stats }: AdminStatsProps) {
+function SyncPanel({ sync, onTrigger, loading }: { sync: SyncStatus; onTrigger: () => void; loading: boolean }) {
+  const lastOk = sync.last_run_ok;
+  const isRunning = sync.running;
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          Auto-sync SAOS
+        </h3>
+        <button
+          onClick={onTrigger}
+          disabled={loading || isRunning}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+        >
+          {loading || isRunning ? (
+            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          )}
+          {isRunning ? "Trwa sync…" : "Uruchom teraz"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
+        <div>
+          <p className="text-slate-400 mb-0.5">Status</p>
+          <span className={`font-semibold ${isRunning ? "text-blue-600 dark:text-blue-400" : lastOk === true ? "text-green-600 dark:text-green-400" : lastOk === false ? "text-red-600 dark:text-red-400" : "text-slate-400"}`}>
+            {isRunning ? "⟳ W toku" : lastOk === true ? "✓ OK" : lastOk === false ? "✗ Błąd" : "— Brak"}
+          </span>
+        </div>
+        <div>
+          <p className="text-slate-400 mb-0.5">Uruchomień</p>
+          <p className="font-semibold text-slate-700 dark:text-slate-300">{sync.runs_total}</p>
+        </div>
+        <div>
+          <p className="text-slate-400 mb-0.5">Błędów</p>
+          <p className={`font-semibold ${sync.runs_failed > 0 ? "text-red-600 dark:text-red-400" : "text-slate-700 dark:text-slate-300"}`}>
+            {sync.runs_failed}
+          </p>
+        </div>
+        <div>
+          <p className="text-slate-400 mb-0.5">Następny</p>
+          <p className="font-semibold text-slate-700 dark:text-slate-300">
+            {sync.next_run ? new Date(sync.next_run).toLocaleString("pl-PL", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+          </p>
+        </div>
+      </div>
+
+      {sync.last_run_start && (
+        <p className="text-xs text-slate-400 mb-3">
+          Ostatni start: {new Date(sync.last_run_start).toLocaleString("pl-PL")}
+          {sync.last_run_end && ` → ${new Date(sync.last_run_end).toLocaleString("pl-PL")}`}
+        </p>
+      )}
+
+      {sync.last_run_log.length > 0 && (
+        <details className="group">
+          <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 select-none">
+            Log ostatniego sync ({sync.last_run_log.length} linii)
+          </summary>
+          <pre className="mt-2 bg-slate-100 dark:bg-slate-900 rounded-lg p-3 text-xs font-mono text-slate-600 dark:text-slate-400 overflow-x-auto max-h-48 overflow-y-auto">
+            {sync.last_run_log.join("\n")}
+          </pre>
+        </details>
+      )}
+    </div>
+  );
+}
+
+export function AdminStats({ health, stats, syncStatus, onTriggerSync, triggerLoading }: AdminStatsProps) {
   const overallOk =
     health.status === "ok" && health.qdrant_connected && health.embedding_model_loaded;
 
@@ -186,6 +261,11 @@ export function AdminStats({ health, stats }: AdminStatsProps) {
           </div>
           <SourceBreakdownChart breakdown={stats.by_source} />
         </div>
+      )}
+
+      {/* Sync panel */}
+      {syncStatus && (
+        <SyncPanel sync={syncStatus} onTrigger={onTriggerSync} loading={triggerLoading} />
       )}
 
       {/* Per-source cards */}

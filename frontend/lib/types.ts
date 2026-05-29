@@ -71,6 +71,17 @@ export interface SourceBreakdown {
   total: number;
 }
 
+export interface SyncStatus {
+  last_run_start: string | null;
+  last_run_end: string | null;
+  last_run_ok: boolean | null;
+  last_run_log: string[];
+  next_run: string | null;
+  running: boolean;
+  runs_total: number;
+  runs_failed: number;
+}
+
 export interface StatsResponse {
   by_source: SourceBreakdown;
   total_chunks: number;

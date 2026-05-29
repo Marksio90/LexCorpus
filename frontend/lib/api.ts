@@ -1,4 +1,4 @@
-import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse } from "./types";
+import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -128,4 +128,16 @@ export async function fetchStats(): Promise<StatsResponse> {
   const res = await fetch(`${API_URL}/stats`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Błąd pobierania statystyk: ${res.status}`);
   return res.json() as Promise<StatsResponse>;
+}
+
+export async function fetchSyncStatus(): Promise<SyncStatus> {
+  const res = await fetch(`${API_URL}/sync/status`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Błąd pobierania statusu sync: ${res.status}`);
+  return res.json() as Promise<SyncStatus>;
+}
+
+export async function triggerSync(): Promise<{ ok: boolean; detail: string }> {
+  const res = await fetch(`${API_URL}/sync/trigger`, { method: "POST" });
+  if (!res.ok) throw new Error(`Błąd uruchamiania sync: ${res.status}`);
+  return res.json();
 }

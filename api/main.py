@@ -172,17 +172,17 @@ def _init_openai():
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize resources at startup."""
     log.info("LexCorpus API starting …")
-    # Pre-initialize the retriever (loads embedding model + connects to Qdrant)
     try:
         _init_retriever()
     except Exception as exc:
         log.warning("Retriever initialization failed (will retry on first request): %s", exc)
 
-    # Pre-initialize local model if configured
     _init_local_model()
-
-    # Initialize OpenAI client
     _init_openai()
+
+    # Start weekly SAOS sync scheduler
+    from api.sync import start_scheduler
+    start_scheduler()
 
     log.info("LexCorpus API ready")
     yield
@@ -346,6 +346,21 @@ async def health() -> HealthResponse:
         embedding_model_loaded=embedding_loaded,
         collection_count=collection_count,
     )
+
+
+@app.get("/sync/status")
+async def sync_status() -> dict:
+    """Return current auto-sync scheduler status."""
+    from api.sync import get_status
+    return get_status()
+
+
+@app.post("/sync/trigger")
+async def sync_trigger(req: Request) -> dict:
+    """Manually trigger a SAOS sync (rate-limited to admin IPs)."""
+    _check_rate_limit(_client_ip(req))
+    from api.sync import trigger_sync
+    return trigger_sync()
 
 
 @app.get("/stats", response_model=StatsResponse)
