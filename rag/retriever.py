@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 import sys
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -103,6 +104,7 @@ class LegalRetriever:
         api_key: str | None = None,
         rerank: bool = True,
         query_expander: Callable[[str, int], list[str]] | None = None,
+        hyde_expander: Callable[[str], str] | None = None,
     ) -> None:
         self.model_name = model_name
         self.rerank_model_name = rerank_model_name
@@ -111,6 +113,7 @@ class LegalRetriever:
         self.api_key = api_key
         self.rerank = rerank
         self.query_expander = query_expander  # fn(query, n) -> list[str] of alternatives
+        self.hyde_expander = hyde_expander
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
@@ -274,6 +277,15 @@ class LegalRetriever:
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
 
+        # HyDE: embed a hypothetical document instead of the raw query for first search pass
+        hyde_query = query
+        if self.hyde_expander is not None:
+            try:
+                hyde_query = self.hyde_expander(query)
+                log.debug("HyDE hypothesis generated (%d chars)", len(hyde_query))
+            except Exception as exc:
+                log.warning("HyDE generation failed, using original query: %s", exc)
+
         filter_conditions: list[qmodels.FieldCondition] = []
         if year_filter:
             filter_conditions.append(
@@ -301,12 +313,34 @@ class LegalRetriever:
                     match=qmodels.MatchAny(any=publishers),
                 )
             )
+
+        # Auto-route if no explicit filter provided
+        if source_type_filter is None:
+            routed = _route_query(query)
+            if routed == "judgment":
+                filter_conditions.append(
+                    qmodels.FieldCondition(
+                        key="source_type",
+                        match=qmodels.MatchAny(any=["judgment_nsa", "judgment_sn",
+                                                    "judgment_tk", "judgment_common", "judgment_kio"]),
+                    )
+                )
+                log.debug("Auto-routed to judgments")
+            elif routed == "legislation":
+                filter_conditions.append(
+                    qmodels.FieldCondition(
+                        key="source_type",
+                        match=qmodels.MatchAny(any=["legislation"]),
+                    )
+                )
+                log.debug("Auto-routed to legislation")
+
         query_filter = qmodels.Filter(must=filter_conditions) if filter_conditions else None
 
         candidate_limit = top_k * PREFETCH_MULTIPLIER
 
-        # Build list of query variants: original + expansions
-        queries = [query]
+        # Build list of query variants: HyDE query (or original) + expansions
+        queries = [hyde_query]
         if use_expand:
             try:
                 alternatives = self.query_expander(query, EXPAND_N)
@@ -411,6 +445,78 @@ SOURCE_TYPE_TO_PUBLISHER = {
     "judgment_common": ["COMMON"],
     "judgment_kio": ["NATIONAL_APPEAL_CHAMBER"],
 }
+
+
+_LEGISLATION_KEYWORDS = re.compile(
+    r"\b(ustawa|rozporządzenie|przepis|artykuł|paragraf|kodeks|dyrektywa|"
+    r"obowiązek|uprawnienie|definicja|wymóg|warunek|termin|kara|sankcja|"
+    r"ile dni|ile lat|jaki jest|co oznacza|co to jest)\b",
+    re.IGNORECASE,
+)
+_JUDGMENT_KEYWORDS = re.compile(
+    r"\b(wyrok|orzeczenie|sąd|sprawa|pozew|apelacja|kasacja|skarga|"
+    r"precedens|orzecznictwo|linia orzecznicza|NSA|SN|TK|WSA|KIO|"
+    r"jak orzekają|praktyka|czy sąd|czy można zaskarżyć)\b",
+    re.IGNORECASE,
+)
+
+
+def _route_query(query: str) -> str | None:
+    """
+    Returns suggested source_type_filter based on query keywords.
+    Returns None if ambiguous (search everything).
+    Only routes when signal is very clear to avoid false positives.
+    """
+    leg_score = len(_LEGISLATION_KEYWORDS.findall(query))
+    jud_score = len(_JUDGMENT_KEYWORDS.findall(query))
+
+    if jud_score >= 2 and leg_score == 0:
+        return "judgment"   # clearly about case law
+    if leg_score >= 2 and jud_score == 0:
+        return "legislation"  # clearly about statutory text
+    return None  # ambiguous — search everything
+
+
+def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
+    """Return function that generates a hypothetical legal document passage for HyDE retrieval."""
+    try:
+        import openai
+    except ImportError:
+        raise RuntimeError("openai package required")
+
+    client = openai.OpenAI(api_key=api_key)
+    _hyde_cache: dict[str, str] = {}
+
+    def generate_hypothesis(query: str) -> str:
+        key = hashlib.md5(query.encode()).hexdigest()
+        if key in _hyde_cache:
+            return _hyde_cache[key]
+        try:
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Jesteś redaktorem aktów prawnych. Napisz fragment (3-5 zdań) "
+                            "polskiego przepisu prawnego lub orzeczenia sądowego, który bezpośrednio "
+                            "odpowiada na poniższe pytanie. Używaj języka prawniczego, pisz tak jakby "
+                            "to był rzeczywisty artykuł ustawy lub teza wyroku. "
+                            "Odpowiedz TYLKO tym fragmentem, bez żadnego wstępu."
+                        ),
+                    },
+                    {"role": "user", "content": query},
+                ],
+                temperature=0.1,
+                max_tokens=200,
+            )
+            result = resp.choices[0].message.content.strip()
+        except Exception:
+            result = query  # fallback: use original query
+        _hyde_cache[key] = result
+        return result
+
+    return generate_hypothesis
 
 
 def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
