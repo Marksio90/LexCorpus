@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AskResponse, SourceDocument } from "@/lib/types";
 import { SourceList, SourceTypeBadge, buildExternalLink } from "./SourceList";
+import { PdfDownloadButton } from "./PdfDownloadButton";
 
 interface AnswerCardProps {
   response: AskResponse;
@@ -270,6 +271,7 @@ export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
               <>
                 <CopyButton response={response} />
                 <DownloadButton response={response} />
+                <PdfDownloadButton response={response} />
               </>
             )}
           </div>
