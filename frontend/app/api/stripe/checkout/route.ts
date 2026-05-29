@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { stripe, STRIPE_PRICES } from "@/lib/stripe";
+import { getStripe, STRIPE_PRICES } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   // Pobierz lub utwórz klienta Stripe
   let customerId = user.stripeCustomerId ?? undefined;
   if (!customerId) {
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: session.user.email,
       metadata: { userId: session.user.id },
     });
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await getStripe().checkout.sessions.create({
     customer:             customerId,
     mode:                 "subscription",
     payment_method_types: ["card"],
