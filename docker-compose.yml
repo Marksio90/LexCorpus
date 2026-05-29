@@ -195,6 +195,17 @@ services:
         fi
       "
 
+  redis:
+    image: redis:7-alpine
+    container_name: lexcorpus-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -215,6 +226,7 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      - REDIS_URL=redis://redis:6379/0
       - SYNC_ENABLED=${SYNC_ENABLED:-true}
       - SYNC_CRON=${SYNC_CRON:-0 3 * * 0}
       - SYNC_SINCE_DAYS=${SYNC_SINCE_DAYS:-8}
@@ -222,6 +234,8 @@ services:
       - SYNC_PROCESSED_DIR=/app/data/processed
     depends_on:
       qdrant:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       ingest:
         condition: service_completed_successfully

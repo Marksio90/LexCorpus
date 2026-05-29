@@ -34,7 +34,6 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 import json
 import time
-from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -43,6 +42,7 @@ from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorRespons
                          HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
                          SourceDocument, StatsResponse, publisher_to_source_type)
 from api.result_cache import get_cache
+from api.rate_limit import check_rate_limit
 
 load_dotenv()
 
@@ -65,24 +65,11 @@ RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0
 EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 
-# ── Simple in-process rate limiter ───────────────────────────────────────────
-# Limits expensive /ask and /ask/stream endpoints per IP.
-_rate_buckets: dict[str, list[float]] = defaultdict(list)
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))   # max requests
-RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))   # per N seconds
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
+RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))
 
 def _check_rate_limit(ip: str) -> None:
-    now = time.time()
-    window_start = now - RATE_LIMIT_WINDOW
-    bucket = _rate_buckets[ip]
-    # Drop old entries
-    _rate_buckets[ip] = [t for t in bucket if t > window_start]
-    if len(_rate_buckets[ip]) >= RATE_LIMIT_REQUESTS:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Zbyt wiele zapytań. Limit: {RATE_LIMIT_REQUESTS} na {RATE_LIMIT_WINDOW}s.",
-        )
-    _rate_buckets[ip].append(now)
+    check_rate_limit(ip)
 
 def _compute_confidence(chunks: list) -> "AnswerConfidence":
     """
