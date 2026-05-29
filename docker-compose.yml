@@ -179,6 +179,11 @@ services:
       - EMAIL_SERVER_PASSWORD=${EMAIL_SERVER_PASSWORD:-}
       - EMAIL_FROM=${EMAIL_FROM:-noreply@lexcorpus.pl}
       - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
+      - STRIPE_PRICE_KANCELARIA=${STRIPE_PRICE_KANCELARIA:-}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/prisma/prod.db}
     depends_on:
       api:
         condition: service_healthy

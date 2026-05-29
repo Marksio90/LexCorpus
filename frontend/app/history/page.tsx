@@ -67,8 +67,10 @@ export default function HistoryPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   useEffect(() => {
-    setMounted(true);
-    setAllEntries(getHistory());
+    getHistory().then((entries) => {
+      setAllEntries(entries);
+      setMounted(true);
+    });
   }, []);
 
   const filtered = useMemo(() => {
@@ -85,14 +87,14 @@ export default function HistoryPage() {
 
   function handleClear() {
     if (confirm("Czy na pewno chcesz usunąć całą historię?")) {
-      clearHistory();
+      void clearHistory();
       setAllEntries([]);
       setExpandedId(null);
     }
   }
 
   function handleDelete(id: string) {
-    removeHistoryEntry(id);
+    void removeHistoryEntry(id);
     setAllEntries((prev) => prev.filter((e) => e.id !== id));
     if (expandedId === id) setExpandedId(null);
   }

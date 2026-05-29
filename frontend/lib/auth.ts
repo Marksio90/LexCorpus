@@ -1,12 +1,29 @@
 import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
 
 const adminEmails = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+export const TIER_LIMITS: Record<string, number> = {
+  free:       20,   // zapytań / dzień
+  pro:        500,
+  kancelaria: 9999,
+};
+
+export function isAdmin(email: string | null | undefined): boolean {
+  if (!email) return false;
+  if (adminEmails.length === 0) return false;
+  return adminEmails.includes(email.toLowerCase());
+}
+
 export const authOptions: NextAuthOptions = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adapter: PrismaAdapter(prisma) as any,
+
   providers: [
     EmailProvider({
       server: {
@@ -20,18 +37,25 @@ export const authOptions: NextAuthOptions = {
       from: process.env.EMAIL_FROM || "noreply@lexcorpus.pl",
     }),
   ],
+
   callbacks: {
-    async signIn({ user }) {
-      if (adminEmails.length === 0) return true;
-      return adminEmails.includes((user.email || "").toLowerCase());
-    },
-    async session({ session }) {
+    async session({ session, user }) {
+      if (session.user && user) {
+        const dbUser = user as typeof user & { tier?: string; id?: string };
+        session.user.id    = dbUser.id ?? "";
+        session.user.tier  = dbUser.tier ?? "free";
+        session.user.admin = isAdmin(user.email);
+      }
       return session;
     },
   },
+
   pages: {
-    signIn: "/admin",
-    error: "/admin",
+    signIn: "/login",
+    error:  "/login",
   },
+
+  session: { strategy: "database" },
+
   secret: process.env.NEXTAUTH_SECRET || "dev-secret-change-in-production",
 };

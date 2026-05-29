@@ -1,42 +1,54 @@
+/**
+ * Historia zapytań — server-side (SQLite przez /api/history).
+ * Sygnatura zachowana dla zgodności z istniejącym kodem.
+ */
 import type { HistoryEntry, AskResponse } from "./types";
 
-const HISTORY_KEY = "lexcorpus_history";
-const MAX_HISTORY = 50;
+// ── Server API helpers ────────────────────────────────────────────────────────
 
-export function getHistory(): HistoryEntry[] {
-  if (typeof window === "undefined") return [];
+export async function getHistory(): Promise<HistoryEntry[]> {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as HistoryEntry[];
+    const res = await fetch("/api/history", { cache: "no-store" });
+    if (!res.ok) return [];
+    return (await res.json()) as HistoryEntry[];
   } catch {
     return [];
   }
 }
 
-export function saveToHistory(response: AskResponse): HistoryEntry {
-  const entry: HistoryEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    timestamp: new Date().toISOString(),
-    question: response.question,
-    answer: response.answer,
-    sources: response.sources,
-    model_used: response.model_used,
-    retrieval_used: response.retrieval_used,
-  };
-
-  const history = getHistory();
-  const updated = [entry, ...history].slice(0, MAX_HISTORY);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-  return entry;
+export async function saveToHistory(response: AskResponse): Promise<HistoryEntry | null> {
+  try {
+    const res = await fetch("/api/history", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question:       response.question,
+        answer:         response.answer,
+        sources:        response.sources,
+        model_used:     response.model_used,
+        retrieval_used: response.retrieval_used,
+      }),
+    });
+    if (!res.ok) return null;
+    const { id, timestamp } = await res.json() as { id: string; timestamp: string };
+    return {
+      id,
+      timestamp,
+      question:       response.question,
+      answer:         response.answer,
+      sources:        response.sources,
+      model_used:     response.model_used,
+      retrieval_used: response.retrieval_used,
+    };
+  } catch {
+    return null;
+  }
 }
 
-export function clearHistory(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(HISTORY_KEY);
+export async function clearHistory(): Promise<void> {
+  await fetch("/api/history", { method: "DELETE" });
 }
 
-export function removeHistoryEntry(id: string): void {
-  const history = getHistory().filter((e) => e.id !== id);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+export async function removeHistoryEntry(id: string): Promise<void> {
+  await fetch(`/api/history/${id}`, { method: "DELETE" });
 }

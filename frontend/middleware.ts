@@ -12,7 +12,12 @@ export default withAuth(
   }
 );
 
-// Only protect /admin route
 export const config = {
-  matcher: ["/admin"],
+  matcher: [
+    "/ask/:path*",
+    "/search/:path*",
+    "/compare/:path*",
+    "/history/:path*",
+    "/admin/:path*",
+  ],
 };
