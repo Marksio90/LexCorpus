@@ -191,6 +191,48 @@ function DownloadButton({ response }: { response: AskResponse }) {
   );
 }
 
+function ShareButton({ response }: { response: AskResponse }) {
+  const [status, setStatus] = useState<"idle" | "loading" | "copied" | "error">("idle");
+
+  async function share() {
+    setStatus("loading");
+    try {
+      const res  = await fetch("/api/share", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question:  response.question,
+          answer:    response.answer,
+          sources:   response.sources,
+          modelUsed: response.model_used,
+          expiresInDays: 30,
+        }),
+      });
+      const data = await res.json() as { url?: string };
+      if (data.url) {
+        await navigator.clipboard.writeText(data.url);
+        setStatus("copied");
+        setTimeout(() => setStatus("idle"), 3000);
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 2000);
+    }
+  }
+
+  return (
+    <button
+      onClick={share}
+      disabled={status === "loading"}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+    >
+      {status === "loading" ? "…" : status === "copied" ? "✓ Link skopiowany" : status === "error" ? "Błąd" : "Udostępnij"}
+    </button>
+  );
+}
+
 // ── Citation tooltip ──────────────────────────────────────────────────────────
 
 function CitationTooltip({ source, num }: { source: SourceDocument; num: number }) {
@@ -319,6 +361,7 @@ export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
                 <CopyButton response={response} />
                 <DownloadButton response={response} />
                 <PdfDownloadButton response={response} />
+                <ShareButton response={response} />
               </>
             )}
           </div>

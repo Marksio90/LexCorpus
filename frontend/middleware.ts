@@ -27,5 +27,7 @@ export const config = {
     "/registry/:path*",
     "/timeline/:path*",
     "/precedents/:path*",
+    "/expert/:path*",
+    "/analytics/:path*",
   ],
 };

@@ -65,6 +65,8 @@ model User {
   privateDocuments PrivateDocument[]
   widgetConfig     WidgetConfig?
   registrySubs     RegistrySubscription[]
+  expertRequests   ExpertRequest[]        @relation("Requester")
+  expertResponses  ExpertRequest[]        @relation("Responder")
 }
 
 // ── Legal Diff alerts ─────────────────────────────────────────────────────────
@@ -161,6 +163,22 @@ model PrivateDocument {
   @@index([userId])
 }
 
+// ── Shareable reports ─────────────────────────────────────────────────────────
+
+model SharedReport {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  question  String
+  answer    String
+  sources   String   // JSON
+  modelUsed String
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@index([token])
+}
+
 // ── Embeddable widget (plan kancelaria) ───────────────────────────────────────
 
 model WidgetConfig {
@@ -178,6 +196,26 @@ model WidgetConfig {
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Expert marketplace ────────────────────────────────────────────────────────
+
+model ExpertRequest {
+  id           String    @id @default(cuid())
+  requesterId  String
+  question     String
+  context      String?   // AI answer context (optional, user can attach)
+  status       String    @default("open")  // open | answered | closed
+  expertId     String?
+  response     String?
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  requester User  @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  expert    User? @relation("Responder", fields: [expertId],    references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([requesterId])
 }
 
 // ── Registry subscriptions ────────────────────────────────────────────────────
