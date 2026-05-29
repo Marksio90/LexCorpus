@@ -4,7 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import OpenAI from "openai";
 
-const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 const API_URL = process.env.INTERNAL_API_URL || "http://api:8000";
 
 const JUDGMENT_TYPES = ["judgment_nsa", "judgment_sn", "judgment_tk", "judgment_common", "judgment_kio"];
@@ -22,7 +24,7 @@ interface SearchHit {
 
 async function expandFactsToQuery(facts: string): Promise<string> {
   try {
-    const resp = await openai.chat.completions.create({
+    const resp = await getOpenAI().chat.completions.create({
       model:       process.env.OPENAI_MODEL ?? "gpt-4o-mini",
       temperature: 0.2,
       max_tokens:  120,
