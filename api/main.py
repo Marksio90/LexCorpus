@@ -469,6 +469,9 @@ async def health() -> HealthResponse:
     model_loaded = _local_model is not None
     embedding_loaded = _retriever is not None and _retriever._dense_model is not None
 
+    cache_stats = get_cache().stats()
+    log.info("Cache: %s", cache_stats)
+
     return HealthResponse(
         status="ok",
         qdrant_connected=qdrant_ok,
@@ -628,6 +631,13 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
 
     log.info("Received question: %s", question[:120])
 
+    # Check semantic result cache (only for non-streaming /ask)
+    _cache = get_cache()
+    cached = _cache.get(question, request.source_type_filter, request.top_k)
+    if cached is not None:
+        log.info("Cache HIT — returning cached response")
+        return JSONResponse(cached)
+
     # Step 1: Retrieve relevant chunks via RAG
     retrieved_chunks = []
     context_str = ""
@@ -689,7 +699,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
     # Step 3: Build source documents for response
     sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
 
-    return AskResponse(
+    response = AskResponse(
         question=question,
         answer=answer,
         sources=sources,
@@ -697,6 +707,9 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
         retrieval_used=retrieval_used,
         confidence=_compute_confidence(retrieved_chunks),
     )
+    result_dict = response.model_dump()
+    _cache.set(question, request.source_type_filter, request.top_k, result_dict)
+    return response
 
 
 @app.post("/ask/stream")
