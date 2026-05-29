@@ -42,6 +42,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorResponse,
                          HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
                          SourceDocument, StatsResponse, publisher_to_source_type)
+from api.result_cache import get_cache
 
 load_dotenv()
 
@@ -142,8 +143,39 @@ def _client_ip(request: Request) -> str:
 # ── API token auth (plan kancelaria) ─────────────────────────────────────────
 import hashlib
 import sqlite3
+import threading
+from queue import Queue, Empty
 
 _DB_PATH = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+
+class _SqlitePool:
+    """Thread-safe SQLite connection pool to avoid per-request connect overhead."""
+    def __init__(self, db_path: str, size: int = 8) -> None:
+        self._pool: Queue = Queue(maxsize=size)
+        for _ in range(size):
+            conn = sqlite3.connect(db_path, timeout=10, check_same_thread=False)
+            conn.execute("PRAGMA journal_mode=WAL")
+            self._pool.put(conn)
+
+    def get(self) -> sqlite3.Connection:
+        try:
+            return self._pool.get(timeout=5)
+        except Empty:
+            raise RuntimeError("SQLite pool exhausted")
+
+    def put(self, conn: sqlite3.Connection) -> None:
+        self._pool.put(conn)
+
+_db_pool: _SqlitePool | None = None
+_db_pool_lock = threading.Lock()
+
+def _get_db_pool() -> _SqlitePool:
+    global _db_pool
+    if _db_pool is None:
+        with _db_pool_lock:
+            if _db_pool is None:
+                _db_pool = _SqlitePool(_DB_PATH)
+    return _db_pool
 
 def _verify_api_token(request: Request) -> str | None:
     """
@@ -156,8 +188,10 @@ def _verify_api_token(request: Request) -> str | None:
         return None
     plain = auth[len("Bearer "):]
     token_hash = hashlib.sha256(plain.encode()).hexdigest()
+    pool = _get_db_pool()
+    conn = pool.get()
+    row = None
     try:
-        conn = sqlite3.connect(_DB_PATH)
         row = conn.execute(
             "SELECT id, userId FROM ApiToken WHERE tokenHash=? AND revokedAt IS NULL",
             (token_hash,),
@@ -168,10 +202,11 @@ def _verify_api_token(request: Request) -> str | None:
                 (row[0],),
             )
             conn.commit()
-        conn.close()
     except Exception as e:
         log.warning("Błąd weryfikacji tokenu API: %s", e)
         row = None
+    finally:
+        pool.put(conn)
     if row is None and plain:
         raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
     return row[1] if row else None
@@ -189,7 +224,7 @@ def _init_retriever():
     if _retriever is not None:
         return _retriever
 
-    from rag.retriever import LegalRetriever, _make_openai_expander
+    from rag.retriever import LegalRetriever, _make_openai_expander, _make_hyde_expander
 
     expander = None
     if EXPAND_ENABLED and OPENAI_API_KEY:
@@ -197,6 +232,12 @@ def _init_retriever():
         log.info("Query expansion enabled (gpt-4o-mini)")
     elif EXPAND_ENABLED:
         log.warning("EXPAND_ENABLED=true but OPENAI_API_KEY not set — expansion disabled")
+
+    hyde_expander = None
+    HYDE_ENABLED = os.getenv("HYDE_ENABLED", "true").lower() not in ("false", "0", "no")
+    if HYDE_ENABLED and OPENAI_API_KEY:
+        hyde_expander = _make_hyde_expander(OPENAI_API_KEY)
+        log.info("HyDE retrieval enabled (hypothetical document embedding)")
 
     _retriever = LegalRetriever(
         model_name=EMBEDDING_MODEL,
@@ -206,6 +247,7 @@ def _init_retriever():
         api_key=QDRANT_API_KEY,
         rerank=RERANK_ENABLED,
         query_expander=expander,
+        hyde_expander=hyde_expander,
     )
     log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
     return _retriever
@@ -259,10 +301,11 @@ def _init_openai():
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize resources at startup."""
     log.info("LexCorpus API starting …")
+    log.info("Warming up retriever at startup …")
     try:
         _init_retriever()
     except Exception as exc:
-        log.warning("Retriever initialization failed (will retry on first request): %s", exc)
+        log.warning("Retriever warmup failed (will retry on first request): %s", exc)
 
     _init_local_model()
     _init_openai()
@@ -426,6 +469,9 @@ async def health() -> HealthResponse:
     model_loaded = _local_model is not None
     embedding_loaded = _retriever is not None and _retriever._dense_model is not None
 
+    cache_stats = get_cache().stats()
+    log.info("Cache: %s", cache_stats)
+
     return HealthResponse(
         status="ok",
         qdrant_connected=qdrant_ok,
@@ -585,6 +631,13 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
 
     log.info("Received question: %s", question[:120])
 
+    # Check semantic result cache (only for non-streaming /ask)
+    _cache = get_cache()
+    cached = _cache.get(question, request.source_type_filter, request.top_k)
+    if cached is not None:
+        log.info("Cache HIT — returning cached response")
+        return JSONResponse(cached)
+
     # Step 1: Retrieve relevant chunks via RAG
     retrieved_chunks = []
     context_str = ""
@@ -607,7 +660,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
                 year_to=request.year_to,
                 publisher_filter=publisher_filter,
             )
-            context_str = retriever.format_context(chunks, max_chars=3500)
+            context_str = retriever.format_context(chunks, max_chars=8000)
             retrieved_chunks = chunks
             retrieval_used = True
             log.info("Retrieved %d chunks (top score: %.4f)", len(chunks), chunks[0].score if chunks else 0.0)
@@ -616,13 +669,37 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
 
     # Step 2: Build prompt and generate answer
     prompt = build_prompt(question, context_str)
-    answer, model_used = generate_answer(prompt)
+
+    # If history is provided, use OpenAI directly with multi-turn messages
+    if request.history and OPENAI_API_KEY:
+        try:
+            import openai as _openai
+            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
+            msgs: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+            for turn in request.history[-6:]:
+                role = turn.get("role", "user")
+                content = turn.get("content", "")
+                if role in ("user", "assistant") and content:
+                    msgs.append({"role": role, "content": content[:2000]})
+            msgs.append({"role": "user", "content": prompt})
+            completion = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                max_tokens=1024,
+                messages=msgs,
+            )
+            answer = completion.choices[0].message.content.strip()
+            model_used = OPENAI_MODEL
+        except Exception as exc:
+            log.warning("Multi-turn /ask failed, falling back: %s", exc)
+            answer, model_used = generate_answer(prompt)
+    else:
+        answer, model_used = generate_answer(prompt)
     log.info("Answer generated by: %s", model_used)
 
     # Step 3: Build source documents for response
     sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
 
-    return AskResponse(
+    response = AskResponse(
         question=question,
         answer=answer,
         sources=sources,
@@ -630,6 +707,9 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
         retrieval_used=retrieval_used,
         confidence=_compute_confidence(retrieved_chunks),
     )
+    result_dict = response.model_dump()
+    _cache.set(question, request.source_type_filter, request.top_k, result_dict)
+    return response
 
 
 @app.post("/ask/stream")
@@ -675,7 +755,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                     year_to=request.year_to,
                     publisher_filter=publisher_filter,
                 )
-                context_str = retriever.format_context(chunks, max_chars=3500)
+                context_str = retriever.format_context(chunks, max_chars=8000)
                 retrieved_chunks = chunks
                 retrieval_used = True
             except Exception as exc:
@@ -699,25 +779,36 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
             client = _openai.OpenAI(api_key=OPENAI_API_KEY)
             model_used = OPENAI_MODEL
 
+            messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+            if request.history:
+                for turn in request.history[-6:]:
+                    role = turn.get("role", "user")
+                    content = turn.get("content", "")
+                    if role in ("user", "assistant") and content:
+                        messages.append({"role": role, "content": content[:2000]})
+            messages.append({"role": "user", "content": prompt})
+
             stream = client.chat.completions.create(
                 model=OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
                 temperature=0.2,
-                max_tokens=1024,
+                max_tokens=1500,
                 stream=True,
+                timeout=90,
             )
 
+            deadline = time.time() + 90
             for chunk in stream:
+                if time.time() > deadline:
+                    yield sse({"type": "error", "detail": "Generacja odpowiedzi przekroczyła limit czasu."})
+                    return
                 delta = chunk.choices[0].delta.content
                 if delta:
                     yield sse({"type": "delta", "text": delta})
 
         except Exception as exc:
             log.error("Streaming generation failed: %s", exc)
-            yield sse({"type": "error", "detail": str(exc)})
+            yield sse({"type": "error", "detail": "Błąd generowania odpowiedzi."})
             return
 
         confidence = _compute_confidence(retrieved_chunks)
@@ -807,7 +898,7 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
     if retriever.use_rerank and all_chunks:
         all_chunks = retriever._rerank(question, all_chunks)
 
-    context_str = retriever.format_context(all_chunks[:8], max_chars=3500)
+    context_str = retriever.format_context(all_chunks[:8], max_chars=8000)
     prompt      = build_prompt(question, context_str)
     answer, model_used = generate_answer(prompt)
     sources = [_chunk_to_source(c) for c in all_chunks[:8]]

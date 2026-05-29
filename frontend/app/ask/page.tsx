@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { AskForm } from "@/components/AskForm";
 import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,7 +8,7 @@ import { UsageBar } from "@/components/UsageBar";
 import { AlertsBadge } from "@/components/AlertsBadge";
 import { askQuestionStream } from "@/lib/api";
 import { saveToHistory } from "@/lib/history";
-import type { AskResponse, AnswerConfidence, SourceDocument, SourceType } from "@/lib/types";
+import type { AskResponse, AnswerConfidence, ConversationTurn, SourceDocument, SourceType } from "@/lib/types";
 
 export default function AskPage() {
   const [response, setResponse] = useState<AskResponse | null>(null);
@@ -16,14 +16,24 @@ export default function AskPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [history, setHistory] = useState<ConversationTurn[]>([]);
 
   // Refs to accumulate streaming state without stale closures
   const answerRef = useRef("");
   const sourcesRef = useRef<SourceDocument[]>([]);
   const retrievalRef = useRef(false);
   const confidenceRef = useRef<AnswerConfidence | undefined>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cleanup any in-flight stream when component unmounts
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const handleAsk = useCallback(async (question: string, sourceType?: SourceType | null) => {
+    // Cancel any previous in-flight request
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setLoading(true);
     setError(null);
     setResponse(null);
@@ -35,7 +45,7 @@ export default function AskPage() {
 
     try {
       // Sprawdź i inkrementuj dzienny limit
-      const usageRes = await fetch("/api/usage", { method: "POST" });
+      const usageRes = await fetch("/api/usage", { method: "POST", signal });
       if (usageRes.status === 429) {
         const data = await usageRes.json();
         setError(data.error + ` (${data.used}/${data.limit}). Przejdź na plan Pro aby kontynuować.`);
@@ -67,6 +77,11 @@ export default function AskPage() {
           setStreamingText(null);
           setResponse(result);
           void saveToHistory(result);
+          setHistory(prev => [
+            ...prev,
+            { role: "user", content: question },
+            { role: "assistant", content: answerRef.current },
+          ].slice(-12) as ConversationTurn[]);
           setLoading(false);
         },
         onError(detail) {
@@ -74,8 +89,12 @@ export default function AskPage() {
           setStreamingText(null);
           setLoading(false);
         },
-      }, sourceType ? { source_type_filter: sourceType } : undefined);
+      }, {
+        ...(sourceType ? { source_type_filter: sourceType } : {}),
+        history: history.length > 0 ? history : undefined,
+      }, signal);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return; // user cancelled
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
       setStreamingText(null);
       setLoading(false);
@@ -86,6 +105,13 @@ export default function AskPage() {
     setSidebarOpen(false);
     handleAsk(question);
   }, [handleAsk]);
+
+  const handleNewConversation = useCallback(() => {
+    setHistory([]);
+    setResponse(null);
+    setStreamingText(null);
+    setError(null);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -123,6 +149,16 @@ export default function AskPage() {
             <span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">
               — Polski AI Prawny
             </span>
+            {history.length > 0 && (
+              <button
+                onClick={handleNewConversation}
+                className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
+                title="Wyczyść historię rozmowy i zacznij nową"
+              >
+                <span>{Math.floor(history.length / 2)} wymian</span>
+                <span>· Nowa rozmowa →</span>
+              </button>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-3">
             <UsageBar />

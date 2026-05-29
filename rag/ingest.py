@@ -86,6 +86,12 @@ def ensure_collection(
             field_name=field,
             field_schema=qmodels.PayloadSchemaType.KEYWORD,
         )
+    for field in ("publisher", "source_type", "chunk_index"):
+        client.create_payload_index(
+            collection_name=collection_name,
+            field_name=field,
+            field_schema=qmodels.PayloadSchemaType.KEYWORD,
+        )
     log.info("Collection created with dense + sparse vectors and payload indexes")
 
 
@@ -109,12 +115,22 @@ def chunk_to_point_id(chunk: dict, index: int) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{act_id}__chunk{chunk_index}"))
 
 
+PUBLISHER_TO_SOURCE = {
+    "WDU": "legislation", "WMP": "legislation",
+    "ADMINISTRATIVE": "judgment_nsa", "SUPREME": "judgment_sn",
+    "CONSTITUTIONAL_TRIBUNAL": "judgment_tk", "COMMON": "judgment_common",
+    "NATIONAL_APPEAL_CHAMBER": "judgment_kio",
+}
+
+
 def build_payload(chunk: dict) -> dict:
+    publisher = chunk.get("publisher", "WDU")
     return {
         "act_id": str(chunk.get("act_id", "")),
         "title": chunk.get("title", ""),
         "year": chunk.get("year", ""),
-        "publisher": chunk.get("publisher", "WDU"),
+        "publisher": publisher,
+        "source_type": PUBLISHER_TO_SOURCE.get(publisher, "legislation"),
         "pos": str(chunk.get("pos", "")),
         "url": chunk.get("url", ""),
         "chunk_index": int(chunk.get("chunk_index", 0)),

@@ -22,8 +22,10 @@ Usage as script:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
+import re
 import sys
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -49,8 +51,8 @@ DEFAULT_QDRANT_PATH = "data/qdrant"
 DEFAULT_TOP_K = 5
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
-PREFETCH_MULTIPLIER = 4  # fetch 4x candidates per query before RRF + re-rank
-EXPAND_N = 2             # number of alternative queries to generate (+ original = 3 total)
+PREFETCH_MULTIPLIER = 6  # fetch 6x candidates for better recall before rerank
+EXPAND_N = 3             # 3 alternative queries + original = 4 total
 CONTEXT_EXPAND = True    # fetch neighbor chunks for wider context in format_context()
 
 
@@ -102,6 +104,7 @@ class LegalRetriever:
         api_key: str | None = None,
         rerank: bool = True,
         query_expander: Callable[[str, int], list[str]] | None = None,
+        hyde_expander: Callable[[str], str] | None = None,
     ) -> None:
         self.model_name = model_name
         self.rerank_model_name = rerank_model_name
@@ -110,6 +113,7 @@ class LegalRetriever:
         self.api_key = api_key
         self.rerank = rerank
         self.query_expander = query_expander  # fn(query, n) -> list[str] of alternatives
+        self.hyde_expander = hyde_expander
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
@@ -153,6 +157,18 @@ class LegalRetriever:
         vector = self.dense_model.encode(query, normalize_embeddings=True, convert_to_numpy=True)
         return vector.tolist()
 
+    def _embed_dense_cached(self, query: str) -> list[float]:
+        """Cache dense embeddings by query hash to avoid recomputing identical queries."""
+        key = hashlib.md5(query.encode()).hexdigest()
+        if not hasattr(self, "_embed_cache"):
+            self._embed_cache: dict[str, list[float]] = {}
+        if key not in self._embed_cache:
+            if len(self._embed_cache) > 512:  # max 512 cached queries
+                # Remove oldest (first) entry
+                self._embed_cache.pop(next(iter(self._embed_cache)))
+            self._embed_cache[key] = self._embed_dense(query)
+        return self._embed_cache[key]
+
     def _embed_sparse(self, query: str) -> qmodels.SparseVector:
         sparse = next(iter(self.sparse_model.query_embed(query)))
         return qmodels.SparseVector(
@@ -167,7 +183,7 @@ class LegalRetriever:
         query_filter: qmodels.Filter | None,
     ) -> list[RetrievedChunk]:
         """Run a single hybrid RRF search and return candidates."""
-        dense_vector = self._embed_dense(query)
+        dense_vector = self._embed_dense_cached(query)
         sparse_vector = self._embed_sparse(query)
         prefetch_limit = candidate_limit
 
@@ -239,6 +255,7 @@ class LegalRetriever:
         year_from: int | None = None,
         year_to: int | None = None,
         publisher_filter: str | None = None,
+        source_type_filter: str | None = None,
         rerank: bool | None = None,
         expand: bool | None = None,
         expand_context: bool = CONTEXT_EXPAND,
@@ -260,6 +277,15 @@ class LegalRetriever:
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
 
+        # HyDE: embed a hypothetical document instead of the raw query for first search pass
+        hyde_query = query
+        if self.hyde_expander is not None:
+            try:
+                hyde_query = self.hyde_expander(query)
+                log.debug("HyDE hypothesis generated (%d chars)", len(hyde_query))
+            except Exception as exc:
+                log.warning("HyDE generation failed, using original query: %s", exc)
+
         filter_conditions: list[qmodels.FieldCondition] = []
         if year_filter:
             filter_conditions.append(
@@ -279,12 +305,42 @@ class LegalRetriever:
             filter_conditions.append(
                 qmodels.FieldCondition(key="publisher", match=qmodels.MatchValue(value=publisher_filter))
             )
+        if source_type_filter and source_type_filter in SOURCE_TYPE_TO_PUBLISHER:
+            publishers = SOURCE_TYPE_TO_PUBLISHER[source_type_filter]
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="source_type",
+                    match=qmodels.MatchAny(any=publishers),
+                )
+            )
+
+        # Auto-route if no explicit filter provided
+        if source_type_filter is None:
+            routed = _route_query(query)
+            if routed == "judgment":
+                filter_conditions.append(
+                    qmodels.FieldCondition(
+                        key="source_type",
+                        match=qmodels.MatchAny(any=["judgment_nsa", "judgment_sn",
+                                                    "judgment_tk", "judgment_common", "judgment_kio"]),
+                    )
+                )
+                log.debug("Auto-routed to judgments")
+            elif routed == "legislation":
+                filter_conditions.append(
+                    qmodels.FieldCondition(
+                        key="source_type",
+                        match=qmodels.MatchAny(any=["legislation"]),
+                    )
+                )
+                log.debug("Auto-routed to legislation")
+
         query_filter = qmodels.Filter(must=filter_conditions) if filter_conditions else None
 
         candidate_limit = top_k * PREFETCH_MULTIPLIER
 
-        # Build list of query variants: original + expansions
-        queries = [query]
+        # Build list of query variants: HyDE query (or original) + expansions
+        queries = [hyde_query]
         if use_expand:
             try:
                 alternatives = self.query_expander(query, EXPAND_N)
@@ -319,17 +375,49 @@ class LegalRetriever:
         return self._expand_context(results) if expand_context else results
 
     def _expand_context(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """Enrich each chunk with text from its immediate neighbors in the same document."""
+        """Enrich each chunk with neighbor text — one Qdrant query per unique document."""
         result_keys = {f"{c.act_id}___{c.chunk_index}" for c in chunks}
+
+        # Collect unique act_ids and needed neighbor indices
+        needed: dict[str, set[int]] = {}
         for chunk in chunks:
+            needed.setdefault(chunk.act_id, set())
+            needed[chunk.act_id].add(chunk.chunk_index - 1)
+            needed[chunk.act_id].add(chunk.chunk_index + 1)
+
+        # Batch fetch: one scroll per document (not per chunk)
+        doc_texts: dict[str, dict[int, str]] = {}
+        for act_id, indices in needed.items():
+            valid = [i for i in indices if i >= 0]
+            if not valid:
+                continue
+            try:
+                points, _ = self.client.scroll(
+                    collection_name=self.collection,
+                    scroll_filter=qmodels.Filter(must=[
+                        qmodels.FieldCondition(key="act_id", match=qmodels.MatchValue(value=act_id)),
+                    ]),
+                    limit=max(valid) + 2,
+                    with_payload=["chunk_index", "text"],
+                    with_vectors=False,
+                )
+                doc_texts[act_id] = {
+                    int(p.payload.get("chunk_index", -1)): p.payload.get("text", "")
+                    for p in points
+                }
+            except Exception as exc:
+                log.debug("Batch neighbor fetch failed for %s: %s", act_id, exc)
+
+        for chunk in chunks:
+            dt = doc_texts.get(chunk.act_id, {})
             parts = []
-            prev = self._fetch_neighbor_text(chunk, -1)
-            if prev and f"{chunk.act_id}___{chunk.chunk_index - 1}" not in result_keys:
-                parts.append(prev)
+            prev_text = dt.get(chunk.chunk_index - 1, "")
+            if prev_text and f"{chunk.act_id}___{chunk.chunk_index - 1}" not in result_keys:
+                parts.append(prev_text)
             parts.append(chunk.text)
-            nxt = self._fetch_neighbor_text(chunk, +1)
-            if nxt and f"{chunk.act_id}___{chunk.chunk_index + 1}" not in result_keys:
-                parts.append(nxt)
+            next_text = dt.get(chunk.chunk_index + 1, "")
+            if next_text and f"{chunk.act_id}___{chunk.chunk_index + 1}" not in result_keys:
+                parts.append(next_text)
             if len(parts) > 1:
                 chunk.text = "\n\n".join(parts)
         return chunks
@@ -349,6 +437,88 @@ class LegalRetriever:
         return "\n\n".join(parts)
 
 
+SOURCE_TYPE_TO_PUBLISHER = {
+    "legislation": ["WDU", "WMP"],
+    "judgment_nsa": ["ADMINISTRATIVE"],
+    "judgment_sn": ["SUPREME"],
+    "judgment_tk": ["CONSTITUTIONAL_TRIBUNAL"],
+    "judgment_common": ["COMMON"],
+    "judgment_kio": ["NATIONAL_APPEAL_CHAMBER"],
+}
+
+
+_LEGISLATION_KEYWORDS = re.compile(
+    r"\b(ustawa|rozporządzenie|przepis|artykuł|paragraf|kodeks|dyrektywa|"
+    r"obowiązek|uprawnienie|definicja|wymóg|warunek|termin|kara|sankcja|"
+    r"ile dni|ile lat|jaki jest|co oznacza|co to jest)\b",
+    re.IGNORECASE,
+)
+_JUDGMENT_KEYWORDS = re.compile(
+    r"\b(wyrok|orzeczenie|sąd|sprawa|pozew|apelacja|kasacja|skarga|"
+    r"precedens|orzecznictwo|linia orzecznicza|NSA|SN|TK|WSA|KIO|"
+    r"jak orzekają|praktyka|czy sąd|czy można zaskarżyć)\b",
+    re.IGNORECASE,
+)
+
+
+def _route_query(query: str) -> str | None:
+    """
+    Returns suggested source_type_filter based on query keywords.
+    Returns None if ambiguous (search everything).
+    Only routes when signal is very clear to avoid false positives.
+    """
+    leg_score = len(_LEGISLATION_KEYWORDS.findall(query))
+    jud_score = len(_JUDGMENT_KEYWORDS.findall(query))
+
+    if jud_score >= 2 and leg_score == 0:
+        return "judgment"   # clearly about case law
+    if leg_score >= 2 and jud_score == 0:
+        return "legislation"  # clearly about statutory text
+    return None  # ambiguous — search everything
+
+
+def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
+    """Return function that generates a hypothetical legal document passage for HyDE retrieval."""
+    try:
+        import openai
+    except ImportError:
+        raise RuntimeError("openai package required")
+
+    client = openai.OpenAI(api_key=api_key)
+    _hyde_cache: dict[str, str] = {}
+
+    def generate_hypothesis(query: str) -> str:
+        key = hashlib.md5(query.encode()).hexdigest()
+        if key in _hyde_cache:
+            return _hyde_cache[key]
+        try:
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Jesteś redaktorem aktów prawnych. Napisz fragment (3-5 zdań) "
+                            "polskiego przepisu prawnego lub orzeczenia sądowego, który bezpośrednio "
+                            "odpowiada na poniższe pytanie. Używaj języka prawniczego, pisz tak jakby "
+                            "to był rzeczywisty artykuł ustawy lub teza wyroku. "
+                            "Odpowiedz TYLKO tym fragmentem, bez żadnego wstępu."
+                        ),
+                    },
+                    {"role": "user", "content": query},
+                ],
+                temperature=0.1,
+                max_tokens=200,
+            )
+            result = resp.choices[0].message.content.strip()
+        except Exception:
+            result = query  # fallback: use original query
+        _hyde_cache[key] = result
+        return result
+
+    return generate_hypothesis
+
+
 def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
     """Return a query expansion function backed by OpenAI gpt-4o-mini."""
     try:
@@ -357,8 +527,12 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
         raise RuntimeError("openai package required for query expansion: pip install openai")
 
     client = openai.OpenAI(api_key=api_key)
+    _expansion_cache: dict[str, list[str]] = {}
 
     def expand(query: str, n: int) -> list[str]:
+        cache_key = hashlib.md5(f"{query}:{n}".encode()).hexdigest()
+        if cache_key in _expansion_cache:
+            return _expansion_cache[cache_key]
         system = (
             "Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
             "podanego pytania prawnego w języku polskim, używając różnych słów kluczowych "
@@ -375,7 +549,9 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
             max_tokens=200,
         )
         lines = response.choices[0].message.content.strip().splitlines()
-        return [l.strip() for l in lines if l.strip()][:n]
+        result = [l.strip() for l in lines if l.strip()][:n]
+        _expansion_cache[cache_key] = result
+        return result
 
     return expand
 

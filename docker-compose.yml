@@ -65,6 +65,36 @@ services:
         fi
       "
 
+  fetch-eurlex:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-fetch-eurlex
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+    environment:
+      - EURLEX_YEAR_FROM=${EURLEX_YEAR_FROM:-2020}
+      - EURLEX_YEAR_TO=${EURLEX_YEAR_TO:-2025}
+      - EURLEX_MAX_ACTS=${EURLEX_MAX_ACTS:-2000}
+      - EURLEX_TYPES=${EURLEX_TYPES:-regulation,directive}
+      - EURLEX_ENABLED=${EURLEX_ENABLED:-true}
+    command: >
+      sh -c "
+        if [ \"$$EURLEX_ENABLED\" = 'false' ]; then
+          echo 'EUR-Lex fetch disabled (EURLEX_ENABLED=false) — skipping.';
+        elif ls /app/data/raw/eurlex_*.jsonl 1>/dev/null 2>&1; then
+          echo 'EUR-Lex data already exists — skipping fetch.';
+        else
+          python scripts/fetch_eurlex.py
+            --year-from $$EURLEX_YEAR_FROM
+            --year-to $$EURLEX_YEAR_TO
+            --type $$EURLEX_TYPES
+            --max-acts $$EURLEX_MAX_ACTS
+            --output /app/data/raw/;
+        fi
+      "
+
   preprocess:
     build:
       context: .
@@ -76,6 +106,8 @@ services:
       fetch:
         condition: service_completed_successfully
       fetch-saos:
+        condition: service_completed_successfully
+      fetch-eurlex:
         condition: service_completed_successfully
     restart: "no"
     command: >

@@ -53,6 +53,11 @@ export interface AskResponse {
   confidence?:    AnswerConfidence;
 }
 
+export interface ConversationTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface AskRequest {
   question: string;
   top_k?: number;
@@ -60,6 +65,7 @@ export interface AskRequest {
   publisher_filter?: string | null;
   source_type_filter?: SourceType | null;
   use_rag?: boolean;
+  history?: ConversationTurn[];
 }
 
 export interface HealthResponse {

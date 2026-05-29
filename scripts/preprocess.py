@@ -166,6 +166,29 @@ def split_into_chunks(text: str, chunk_tokens: int = 512, overlap_tokens: int = 
     return [c for c in chunks if len(c) >= 50]
 
 
+# Regex detecting article boundaries in Polish legislative acts
+_ARTICLE_RE = re.compile(
+    r"(?m)^[ \t]*(?:Art\.|Artykuł|§)\s*\d+[\w\.]*[a-z]?\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _split_by_articles(text: str) -> list[str]:
+    """Split ISAP text at article boundaries, preserving full articles."""
+    parts = _ARTICLE_RE.split(text)
+    headers = _ARTICLE_RE.findall(text)
+    if len(headers) < 2:
+        return [text]  # No article structure detected — return as-is
+    result = []
+    for i, part in enumerate(parts):
+        if not part.strip():
+            continue
+        if i > 0 and i - 1 < len(headers):
+            part = headers[i - 1].strip() + "\n" + part
+        result.append(part.strip())
+    return result
+
+
 # Patterns that mark section boundaries in Polish court judgments
 _SAOS_SECTION_RE = re.compile(
     r"(?m)^[ \t]*("
@@ -231,7 +254,19 @@ def _process_isap_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
     if not cleaned:
         return []
 
-    chunks = split_into_chunks(cleaned, chunk_tokens, overlap_tokens)
+    # Próbuj podzielić według artykułów; każdy artykuł jest następnie chunkowany oddzielnie
+    article_sections = _split_by_articles(cleaned)
+
+    all_chunks: list[str] = []
+    if len(article_sections) > 1:
+        for section in article_sections:
+            if len(section) < 50:
+                continue
+            section_chunks = split_into_chunks(section, chunk_tokens, overlap_tokens)
+            all_chunks.extend(section_chunks)
+    else:
+        all_chunks = split_into_chunks(cleaned, chunk_tokens, overlap_tokens)
+
     return [
         {
             "act_id": act_id,
@@ -241,11 +276,11 @@ def _process_isap_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
             "pos": record.get("pos", ""),
             "url": record.get("url", ""),
             "chunk_index": idx,
-            "total_chunks": len(chunks),
+            "total_chunks": len(all_chunks),
             "text": chunk,
             "approx_tokens": naive_token_count(chunk),
         }
-        for idx, chunk in enumerate(chunks)
+        for idx, chunk in enumerate(all_chunks)
     ]
 
 
