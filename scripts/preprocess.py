@@ -166,8 +166,18 @@ def split_into_chunks(text: str, chunk_tokens: int = 512, overlap_tokens: int = 
     return [c for c in chunks if len(c) >= 50]
 
 
+def _is_saos_record(record: dict) -> bool:
+    return "saos_id" in record or "court_type" in record
+
+
 def process_record(record: dict, chunk_tokens: int = 512, overlap_tokens: int = 64) -> list[dict]:
-    """Clean and chunk a single JSONL record, returning a list of chunk dicts."""
+    """Clean and chunk a single JSONL record (ISAP or SAOS format)."""
+    if _is_saos_record(record):
+        return _process_saos_record(record, chunk_tokens, overlap_tokens)
+    return _process_isap_record(record, chunk_tokens, overlap_tokens)
+
+
+def _process_isap_record(record: dict, chunk_tokens: int, overlap_tokens: int) -> list[dict]:
     act_id = str(record.get("id", ""))
     title = record.get("title", "")
     year = record.get("year", "")
@@ -186,6 +196,53 @@ def process_record(record: dict, chunk_tokens: int = 512, overlap_tokens: int = 
             "publisher": record.get("publisher", "WDU"),
             "pos": record.get("pos", ""),
             "url": record.get("url", ""),
+            "chunk_index": idx,
+            "total_chunks": len(chunks),
+            "text": chunk,
+            "approx_tokens": naive_token_count(chunk),
+        }
+        for idx, chunk in enumerate(chunks)
+    ]
+
+
+def _process_saos_record(record: dict, chunk_tokens: int, overlap_tokens: int) -> list[dict]:
+    act_id = record.get("id", f"saos_{record.get('saos_id', '')}")
+    case_number = record.get("case_number", "")
+    court_type = record.get("court_type", "")
+    judgment_date = record.get("judgment_date", "")
+    year = judgment_date[:4] if judgment_date else ""
+
+    # Build a descriptive title: "court_type | case_number | date"
+    court_label = {
+        "SUPREME": "Sąd Najwyższy",
+        "ADMINISTRATIVE": "Sąd Administracyjny (NSA/WSA)",
+        "CONSTITUTIONAL_TRIBUNAL": "Trybunał Konstytucyjny",
+        "COMMON": "Sąd Powszechny",
+        "NATIONAL_APPEAL_CHAMBER": "Krajowa Izba Odwoławcza",
+    }.get(court_type, court_type)
+    title = f"{court_label} | {case_number} | {judgment_date}"
+
+    # Prepend cited regulations as context before the judgment text
+    regs = record.get("referenced_regulations") or []
+    reg_context = ""
+    if regs:
+        reg_lines = [r["citation"] for r in regs if r.get("citation")][:10]
+        if reg_lines:
+            reg_context = "Podstawy prawne: " + "; ".join(reg_lines) + "\n\n"
+
+    cleaned = clean_text(reg_context + (record.get("text_html") or ""))
+    if not cleaned:
+        return []
+
+    chunks = split_into_chunks(cleaned, chunk_tokens, overlap_tokens)
+    return [
+        {
+            "act_id": act_id,
+            "title": title,
+            "year": year,
+            "publisher": court_type,
+            "pos": case_number,
+            "url": record.get("source_url", ""),
             "chunk_index": idx,
             "total_chunks": len(chunks),
             "text": chunk,

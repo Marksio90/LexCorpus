@@ -41,6 +41,32 @@ services:
         fi
       "
 
+  fetch-saos:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-fetch-saos
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+    environment:
+      - SAOS_YEAR_FROM=${SAOS_YEAR_FROM:-2023}
+      - SAOS_YEAR_TO=${SAOS_YEAR_TO:-2025}
+      - SAOS_ENABLED=${SAOS_ENABLED:-true}
+    command: >
+      sh -c "
+        if [ \"$$SAOS_ENABLED\" = 'false' ]; then
+          echo 'SAOS fetch disabled (SAOS_ENABLED=false) — skipping.';
+        elif ls /app/data/raw/saos_*.jsonl 1>/dev/null 2>&1; then
+          echo 'SAOS data already exists — skipping fetch.';
+        else
+          python scripts/fetch_saos.py
+            --year-from $$SAOS_YEAR_FROM
+            --year-to $$SAOS_YEAR_TO
+            --output /app/data/raw/;
+        fi
+      "
+
   preprocess:
     build:
       context: .
@@ -50,6 +76,8 @@ services:
       - ./data:/app/data
     depends_on:
       fetch:
+        condition: service_completed_successfully
+      fetch-saos:
         condition: service_completed_successfully
     restart: "no"
     command: >
