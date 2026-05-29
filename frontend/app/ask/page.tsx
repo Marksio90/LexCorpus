@@ -1,31 +1,68 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AskForm } from "@/components/AskForm";
 import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
-import { askQuestion } from "@/lib/api";
+import { askQuestionStream } from "@/lib/api";
 import { saveToHistory } from "@/lib/history";
-import type { AskResponse } from "@/lib/types";
+import type { AskResponse, SourceDocument, SourceType } from "@/lib/types";
 
 export default function AskPage() {
   const [response, setResponse] = useState<AskResponse | null>(null);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleAsk = useCallback(async (question: string) => {
+  // Refs to accumulate streaming state without stale closures
+  const answerRef = useRef("");
+  const sourcesRef = useRef<SourceDocument[]>([]);
+  const retrievalRef = useRef(false);
+
+  const handleAsk = useCallback(async (question: string, sourceType?: SourceType | null) => {
     setLoading(true);
     setError(null);
     setResponse(null);
+    setStreamingText(null);
+    answerRef.current = "";
+    sourcesRef.current = [];
+    retrievalRef.current = false;
 
     try {
-      const result = await askQuestion(question, 5);
-      setResponse(result);
-      saveToHistory(result);
+      await askQuestionStream(question, 5, {
+        onSources(sources, retrievalUsed) {
+          sourcesRef.current = sources;
+          retrievalRef.current = retrievalUsed;
+          // Show empty streaming card immediately so sources appear while text streams
+          setStreamingText("");
+        },
+        onDelta(text) {
+          answerRef.current += text;
+          setStreamingText(answerRef.current);
+        },
+        onDone(modelUsed) {
+          const result: AskResponse = {
+            question,
+            answer: answerRef.current,
+            sources: sourcesRef.current,
+            model_used: modelUsed,
+            retrieval_used: retrievalRef.current,
+          };
+          setStreamingText(null);
+          setResponse(result);
+          saveToHistory(result);
+          setLoading(false);
+        },
+        onError(detail) {
+          setError(detail);
+          setStreamingText(null);
+          setLoading(false);
+        },
+      }, undefined, sourceType ? { source_type_filter: sourceType } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
-    } finally {
+      setStreamingText(null);
       setLoading(false);
     }
   }, []);
@@ -73,17 +110,15 @@ export default function AskPage() {
             </span>
           </div>
           <div className="ml-auto flex gap-2">
-            <a
-              href="/history"
-              className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
+            <a href="/search" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Szukaj
+            </a>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <a href="/history" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Historia
             </a>
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <a
-              href="/admin"
-              className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
+            <a href="/admin" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Admin
             </a>
           </div>
@@ -115,16 +150,32 @@ export default function AskPage() {
             </div>
           )}
 
-          {/* Loading */}
-          {loading && (
+          {/* Loading spinner — only before sources arrive */}
+          {loading && streamingText === null && (
             <div className="mt-8 flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400">
               <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <p className="text-sm">Przeszukuję akty prawne i generuję odpowiedź…</p>
+              <p className="text-sm">Przeszukuję akty prawne…</p>
             </div>
           )}
 
-          {/* Answer */}
-          {response && !loading && (
+          {/* Streaming answer */}
+          {streamingText !== null && (
+            <div className="mt-6">
+              <AnswerCard
+                response={{
+                  question: "",
+                  answer: streamingText,
+                  sources: sourcesRef.current,
+                  model_used: "gpt-4o-mini",
+                  retrieval_used: retrievalRef.current,
+                }}
+                streaming
+              />
+            </div>
+          )}
+
+          {/* Final answer */}
+          {response && !loading && streamingText === null && (
             <div className="mt-6">
               <AnswerCard response={response} />
             </div>

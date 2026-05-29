@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 
 SEARCH_URL = "https://api.sejm.gov.pl/eli/acts/search"
 TEXT_URL = "https://api.sejm.gov.pl/eli/acts/{eli}/text.html"
+PDF_URL  = "https://api.sejm.gov.pl/eli/acts/{eli}/text.pdf"
 
 MAX_RETRIES = 5
 INITIAL_BACKOFF = 2.0
@@ -127,19 +128,44 @@ def list_acts_for_year(
     return acts
 
 
+def _extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract plain text from a digital PDF using pymupdf."""
+    try:
+        import pymupdf  # type: ignore
+    except ImportError:
+        log.warning("pymupdf not installed — skipping PDF extraction (pip install pymupdf)")
+        return ""
+    try:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+        pages = [page.get_text() for page in doc]
+        doc.close()
+        return "\n".join(pages)
+    except Exception as exc:
+        log.debug("PDF extraction failed: %s", exc)
+        return ""
+
+
 def fetch_act_text(client: httpx.Client, act: dict) -> str:
     eli = act.get("ELI", "")
     if not eli:
         return ""
 
-    has_html = act.get("textHTML", False)
-    if not has_html:
-        return ""
+    # Prefer HTML (cleaner structure), fall back to PDF for recent acts
+    if act.get("textHTML", False):
+        url = TEXT_URL.format(eli=eli)
+        response = fetch_with_backoff(client, url, headers=HEADERS)
+        if response is not None:
+            return response.text
 
-    url = TEXT_URL.format(eli=eli)
-    response = fetch_with_backoff(client, url, headers=HEADERS)
-    if response is not None:
-        return response.text
+    if act.get("textPDF", False):
+        url = PDF_URL.format(eli=eli)
+        pdf_headers = {**HEADERS, "Accept": "application/pdf"}
+        response = fetch_with_backoff(client, url, headers=pdf_headers)
+        if response is not None and response.content:
+            text = _extract_pdf_text(response.content)
+            if text.strip():
+                return text
+
     return ""
 
 

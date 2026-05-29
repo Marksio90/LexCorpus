@@ -32,11 +32,13 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
+import json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from api.schemas import AskRequest, AskResponse, ErrorResponse, HealthResponse, SourceDocument
+from api.schemas import (AskRequest, AskResponse, ErrorResponse, HealthResponse,
+                         SearchRequest, SearchResponse, SourceDocument, publisher_to_source_type)
 
 load_dotenv()
 
@@ -54,6 +56,9 @@ LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
+RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
+EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -68,13 +73,23 @@ def _init_retriever():
     if _retriever is not None:
         return _retriever
 
-    from rag.retriever import LegalRetriever
+    from rag.retriever import LegalRetriever, _make_openai_expander
+
+    expander = None
+    if EXPAND_ENABLED and OPENAI_API_KEY:
+        expander = _make_openai_expander(OPENAI_API_KEY)
+        log.info("Query expansion enabled (gpt-4o-mini)")
+    elif EXPAND_ENABLED:
+        log.warning("EXPAND_ENABLED=true but OPENAI_API_KEY not set — expansion disabled")
 
     _retriever = LegalRetriever(
         model_name=EMBEDDING_MODEL,
+        rerank_model_name=RERANK_MODEL,
         collection=QDRANT_COLLECTION,
         qdrant=QDRANT_PATH,
         api_key=QDRANT_API_KEY,
+        rerank=RERANK_ENABLED,
+        query_expander=expander,
     )
     log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
     return _retriever
@@ -183,18 +198,20 @@ SYSTEM_PROMPT = (
     "na podstawie podanych przepisów prawa polskiego. "
     "Udzielasz dokładnych, zwięzłych odpowiedzi w języku polskim. "
     "Jeśli nie znasz odpowiedzi na podstawie podanych przepisów, mówisz o tym wprost. "
-    "Zawsze powołujesz się na konkretne artykuły i akty prawne."
+    "Zawsze powołujesz się na konkretne artykuły i akty prawne używając znaczników [1], [2] itd. "
+    "odpowiadających numeracji podanych przepisów."
 )
 
 
 def build_prompt(question: str, context: str) -> str:
-    """Build a RAG prompt with retrieved context."""
     if context:
         return (
-            f"Na podstawie poniższych przepisów prawnych, odpowiedz na pytanie.\n\n"
+            "Na podstawie poniższych przepisów prawnych odpowiedz na pytanie. "
+            "Cytuj źródła używając numerów w nawiasach kwadratowych, np. [1], [2], "
+            "zgodnie z numeracją w sekcji PRZEPISY poniżej.\n\n"
             f"PRZEPISY:\n{context}\n\n"
             f"PYTANIE: {question}\n\n"
-            f"ODPOWIEDŹ:"
+            "ODPOWIEDŹ (powołuj się na [numer] przy każdym twierdzeniu):"
         )
     return f"PYTANIE: {question}\n\nODPOWIEDŹ:"
 
@@ -291,7 +308,7 @@ async def health() -> HealthResponse:
         log.warning("Qdrant health check failed: %s", exc)
 
     model_loaded = _local_model is not None
-    embedding_loaded = _retriever is not None and _retriever._model is not None
+    embedding_loaded = _retriever is not None and _retriever._dense_model is not None
 
     return HealthResponse(
         status="ok",
@@ -299,6 +316,49 @@ async def health() -> HealthResponse:
         model_loaded=model_loaded,
         embedding_model_loaded=embedding_loaded,
         collection_count=collection_count,
+    )
+
+
+def _chunk_to_source(chunk) -> SourceDocument:
+    return SourceDocument(
+        score=chunk.score,
+        act_id=chunk.act_id,
+        title=chunk.title,
+        year=chunk.year,
+        publisher=chunk.publisher,
+        source_type=publisher_to_source_type(chunk.publisher),
+        pos=chunk.pos,
+        url=chunk.url,
+        chunk_index=chunk.chunk_index,
+        total_chunks=chunk.total_chunks,
+        text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
+        citation=chunk.citation(),
+    )
+
+
+@app.post("/search", response_model=SearchResponse)
+async def search(request: SearchRequest) -> SearchResponse:
+    """Pure semantic search — returns relevant chunks without LLM generation.
+    Useful for lawyers who want to browse source documents directly."""
+    retriever = _init_retriever()
+    publisher_filter = request.publisher_filter
+    if not publisher_filter and request.source_type_filter:
+        # Map source_type back to publisher for Qdrant filter
+        reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
+                   "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
+                   "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+        publisher_filter = reverse.get(request.source_type_filter)
+
+    chunks = retriever.retrieve(
+        query=request.query,
+        top_k=request.top_k,
+        year_filter=request.year_filter,
+        publisher_filter=publisher_filter,
+    )
+    return SearchResponse(
+        query=request.query,
+        results=[_chunk_to_source(c) for c in chunks],
+        total=len(chunks),
     )
 
 
@@ -325,11 +385,17 @@ async def ask(request: AskRequest) -> AskResponse:
     if request.use_rag:
         try:
             retriever = _init_retriever()
+            publisher_filter = request.publisher_filter
+            if not publisher_filter and request.source_type_filter:
+                reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
+                           "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
+                           "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+                publisher_filter = reverse.get(request.source_type_filter)
             chunks = retriever.retrieve(
                 query=question,
                 top_k=request.top_k,
                 year_filter=request.year_filter,
-                publisher_filter=request.publisher_filter,
+                publisher_filter=publisher_filter,
             )
             context_str = retriever.format_context(chunks, max_chars=3500)
             retrieved_chunks = chunks
@@ -344,22 +410,7 @@ async def ask(request: AskRequest) -> AskResponse:
     log.info("Answer generated by: %s", model_used)
 
     # Step 3: Build source documents for response
-    sources = [
-        SourceDocument(
-            score=chunk.score,
-            act_id=chunk.act_id,
-            title=chunk.title,
-            year=chunk.year,
-            publisher=chunk.publisher,
-            pos=chunk.pos,
-            url=chunk.url,
-            chunk_index=chunk.chunk_index,
-            total_chunks=chunk.total_chunks,
-            text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
-            citation=chunk.citation(),
-        )
-        for chunk in retrieved_chunks
-    ]
+    sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
 
     return AskResponse(
         question=question,
@@ -367,6 +418,111 @@ async def ask(request: AskRequest) -> AskResponse:
         sources=sources,
         model_used=model_used,
         retrieval_used=retrieval_used,
+    )
+
+
+@app.post("/ask/stream")
+async def ask_stream(request: AskRequest) -> StreamingResponse:
+    """
+    Streaming version of /ask using Server-Sent Events.
+
+    Event types:
+      data: {"type": "sources", "sources": [...], "retrieval_used": bool}
+      data: {"type": "delta",   "text": "..."}
+      data: {"type": "done",    "model_used": "..."}
+      data: {"type": "error",   "detail": "..."}
+    """
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question must not be empty")
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        def sse(payload: dict) -> str:
+            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+        # Step 1: RAG retrieval (blocking, but fast)
+        retrieved_chunks = []
+        context_str = ""
+        retrieval_used = False
+
+        if request.use_rag:
+            try:
+                retriever = _init_retriever()
+                chunks = retriever.retrieve(
+                    query=question,
+                    top_k=request.top_k,
+                    year_filter=request.year_filter,
+                    publisher_filter=request.publisher_filter,
+                )
+                context_str = retriever.format_context(chunks, max_chars=3500)
+                retrieved_chunks = chunks
+                retrieval_used = True
+            except Exception as exc:
+                log.warning("RAG retrieval failed in stream: %s", exc)
+
+        sources = [
+            SourceDocument(
+                score=chunk.score,
+                act_id=chunk.act_id,
+                title=chunk.title,
+                year=chunk.year,
+                publisher=chunk.publisher,
+                pos=chunk.pos,
+                url=chunk.url,
+                chunk_index=chunk.chunk_index,
+                total_chunks=chunk.total_chunks,
+                text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
+                citation=chunk.citation(),
+            )
+            for chunk in retrieved_chunks
+        ]
+
+        # Emit sources immediately so the UI can show them while text streams
+        yield sse({"type": "sources", "sources": [s.model_dump() for s in sources], "retrieval_used": retrieval_used})
+
+        # Step 2: Stream the answer
+        prompt = build_prompt(question, context_str)
+        model_used = "unknown"
+
+        if not OPENAI_API_KEY:
+            yield sse({"type": "error", "detail": "OPENAI_API_KEY not set"})
+            return
+
+        try:
+            import openai as _openai
+            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
+            model_used = OPENAI_MODEL
+
+            stream = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+                max_tokens=1024,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    yield sse({"type": "delta", "text": delta})
+
+        except Exception as exc:
+            log.error("Streaming generation failed: %s", exc)
+            yield sse({"type": "error", "detail": str(exc)})
+            return
+
+        yield sse({"type": "done", "model_used": model_used})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable nginx buffering
+        },
     )
 
 

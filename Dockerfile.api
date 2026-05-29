@@ -7,14 +7,16 @@ RUN pip install --no-cache-dir \
     tqdm \
     numpy \
     sentence-transformers \
-    qdrant-client \
+    "qdrant-client[fastembed]" \
+    fastembed \
     fastapi \
     "uvicorn[standard]" \
     python-dotenv \
     openai \
     beautifulsoup4 \
     lxml \
-    pydantic
+    pydantic \
+    pymupdf
 
 COPY . .
 

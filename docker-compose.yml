@@ -22,13 +22,45 @@ services:
     volumes:
       - ./data:/app/data
     restart: "no"
+    environment:
+      - FETCH_YEAR=${FETCH_YEAR:-}
+      - FETCH_YEAR_FROM=${FETCH_YEAR_FROM:-2024}
+      - FETCH_YEAR_TO=${FETCH_YEAR_TO:-2025}
     command: >
       sh -c "
         if ls /app/data/raw/acts_*.jsonl 1>/dev/null 2>&1; then
           echo 'Raw data already exists — skipping fetch.';
         else
-          python scripts/fetch_isap.py
-            --year ${FETCH_YEAR:-2024}
+          if [ -n \"$$FETCH_YEAR\" ]; then
+            python scripts/fetch_isap.py --year $$FETCH_YEAR --output /app/data/raw/;
+          else
+            python scripts/fetch_isap.py --year-from $$FETCH_YEAR_FROM --year-to $$FETCH_YEAR_TO --output /app/data/raw/;
+          fi
+        fi
+      "
+
+  fetch-saos:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-fetch-saos
+    volumes:
+      - ./data:/app/data
+    restart: "no"
+    environment:
+      - SAOS_YEAR_FROM=${SAOS_YEAR_FROM:-2023}
+      - SAOS_YEAR_TO=${SAOS_YEAR_TO:-2025}
+      - SAOS_ENABLED=${SAOS_ENABLED:-true}
+    command: >
+      sh -c "
+        if [ \"$$SAOS_ENABLED\" = 'false' ]; then
+          echo 'SAOS fetch disabled (SAOS_ENABLED=false) — skipping.';
+        elif ls /app/data/raw/saos_*.jsonl 1>/dev/null 2>&1; then
+          echo 'SAOS data already exists — skipping fetch.';
+        else
+          python scripts/fetch_saos.py
+            --year-from $$SAOS_YEAR_FROM
+            --year-to $$SAOS_YEAR_TO
             --output /app/data/raw/;
         fi
       "
@@ -42,6 +74,8 @@ services:
       - ./data:/app/data
     depends_on:
       fetch:
+        condition: service_completed_successfully
+      fetch-saos:
         condition: service_completed_successfully
     restart: "no"
     command: >
@@ -75,10 +109,18 @@ services:
     restart: "no"
     command: >
       sh -c "
-        python rag/ingest.py
-          --input /app/data/processed/chunks.jsonl
-          --qdrant http://qdrant:6333
-          --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2};
+        SENTINEL=/app/data/qdrant/.ingested;
+        if [ -f \"$$SENTINEL\" ]; then
+          echo 'Qdrant already ingested (sentinel exists) — skipping.';
+        else
+          python rag/ingest.py
+            --input /app/data/processed/chunks.jsonl
+            --qdrant http://qdrant:6333
+            --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+            --recreate
+          && touch \"$$SENTINEL\"
+          && echo 'Ingest complete. Sentinel written.';
+        fi
       "
 
   api:
@@ -94,6 +136,9 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
+      - RERANK_MODEL=${RERANK_MODEL:-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
+      - RERANK_ENABLED=${RERANK_ENABLED:-true}
+      - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
     depends_on:
       qdrant:
@@ -102,7 +147,7 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -130,5 +175,32 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+
+  # Run manually to sync new SAOS judgments:
+  #   docker compose run --rm sync-saos
+  sync-saos:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-sync-saos
+    volumes:
+      - ./data:/app/data
+    profiles: ["sync"]
+    restart: "no"
+    command: >
+      sh -c "
+        python scripts/fetch_saos.py
+          --since-date $$(date -d '7 days ago' +%Y-%m-%d)
+          --output /app/data/raw/
+        && rm -f /app/data/qdrant/.ingested
+        && python rag/ingest.py
+          --input /app/data/processed/chunks.jsonl
+          --qdrant http://qdrant:6333
+          --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+        && touch /app/data/qdrant/.ingested
+      "
+    depends_on:
+      qdrant:
+        condition: service_healthy
 
 volumes: {}
