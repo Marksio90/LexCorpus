@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { searchDocuments } from "@/lib/api";
 import { SourceList } from "@/components/SourceList";
@@ -17,7 +17,7 @@ const SOURCE_FILTERS: { value: SourceType | null; label: string }[] = [
 
 const TOP_K_OPTIONS = [5, 10, 20, 50];
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [query, setQuery]           = useState(searchParams.get("q") ?? "");
   const [sourceType, setSourceType] = useState<SourceType | null>(null);
@@ -219,5 +219,13 @@ export default function SearchPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-900" />}>
+      <SearchContent />
+    </Suspense>
   );
 }
