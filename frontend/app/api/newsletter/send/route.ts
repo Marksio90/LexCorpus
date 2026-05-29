@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Nieautoryzowany." }, { status: 401 });
     }
-    if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(session.user.email)) {
+    if (ADMIN_EMAILS.length === 0 || !ADMIN_EMAILS.includes(session.user.email)) {
       return NextResponse.json({ error: "Brak uprawnień." }, { status: 403 });
     }
   }

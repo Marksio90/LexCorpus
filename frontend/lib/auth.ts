@@ -57,5 +57,11 @@ export const authOptions: NextAuthOptions = {
 
   session: { strategy: "database" },
 
-  secret: process.env.NEXTAUTH_SECRET || "dev-secret-change-in-production",
+  secret: (() => {
+    const s = process.env.NEXTAUTH_SECRET;
+    if (!s && process.env.NODE_ENV === "production") {
+      throw new Error("NEXTAUTH_SECRET musi być ustawiony w produkcji");
+    }
+    return s ?? "dev-secret-change-in-production";
+  })(),
 };

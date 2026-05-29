@@ -51,7 +51,8 @@ export async function GET() {
   const sourceCounts: Record<string, number> = {};
   for (const log of topSources) {
     try {
-      const srcs = JSON.parse(log.sources) as { source_type?: string }[];
+      let srcs: { source_type?: string }[] = [];
+      try { srcs = JSON.parse(log.sources) as typeof srcs; } catch { /* skip malformed */ }
       for (const s of srcs) {
         if (s.source_type) sourceCounts[s.source_type] = (sourceCounts[s.source_type] ?? 0) + 1;
       }

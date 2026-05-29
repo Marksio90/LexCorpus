@@ -74,9 +74,7 @@ export async function POST(req: NextRequest) {
       "--doc-id",  doc.id,
       "--mime",    file.type || "text/plain",
       "--db",      dbPath,
-      "--qdrant",  process.env.NEXT_PUBLIC_API_URL
-                     ? process.env.NEXT_PUBLIC_API_URL.replace(":3000", ":8000")
-                     : "http://localhost:8000",
+      "--qdrant",  process.env.INTERNAL_API_URL || "http://api:8000",
     ],
     { detached: true, stdio: "ignore", cwd: join(process.cwd(), "..") }
   ).unref();

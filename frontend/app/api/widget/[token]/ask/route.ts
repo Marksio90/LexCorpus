@@ -42,7 +42,7 @@ export async function POST(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       question:          body.question,
-      use_retrieval:     true,
+      use_rag:           true,
       source_type_filter: null,
       top_k:             5,
     }),

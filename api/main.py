@@ -724,7 +724,11 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
 @app.delete("/private-collection/{user_id}")
 async def delete_private_collection(user_id: str, req: Request) -> dict:
     """Usuwa prywatną kolekcję Qdrant użytkownika."""
-    _verify_api_token(req)   # wymaga tokenu lub sesji
+    token_owner = _verify_api_token(req)
+    if not token_owner:
+        raise HTTPException(status_code=401, detail="Wymagany token Bearer.")
+    if token_owner != user_id:
+        raise HTTPException(status_code=403, detail="Brak dostępu do tej kolekcji.")
     collection = f"lexcorpus_private_{user_id}"
     try:
         retriever = _init_retriever()
