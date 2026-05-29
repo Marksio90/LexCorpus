@@ -5,13 +5,11 @@ COPY pyproject.toml .
 RUN pip install --no-cache-dir \
     httpx \
     tqdm \
-    datasets \
-    transformers \
-    peft \
+    numpy \
     sentence-transformers \
     qdrant-client \
     fastapi \
-    uvicorn[standard] \
+    "uvicorn[standard]" \
     python-dotenv \
     openai \
     beautifulsoup4 \

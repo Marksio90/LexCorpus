@@ -1,0 +1,11 @@
+data/raw/
+data/processed/
+data/qdrant/
+**/__pycache__/
+**/*.pyc
+**/.env
+.git/
+frontend/node_modules/
+frontend/.next/
+output/
+notebooks/

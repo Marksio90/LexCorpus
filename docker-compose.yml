@@ -46,7 +46,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://api:8000
+      # NEXT_PUBLIC_* vars are embedded at build time and used by the browser,
+      # so this must be the host-visible URL, not the internal Docker network name.
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-me-in-production}
       - EMAIL_SERVER_HOST=${EMAIL_SERVER_HOST:-}
