@@ -56,6 +56,7 @@ model User {
   sessions   Session[]
   usageLogs  UsageLog[]
   queryLogs  QueryLog[]
+  apiTokens  ApiToken[]
 }
 
 model VerificationToken {
@@ -81,6 +82,24 @@ model QueryLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+// ── API tokens (plan kancelaria) ─────────────────────────────────────────────
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String                        // etykieta nadana przez usera
+  tokenHash   String    @unique             // SHA-256 hex — nigdy nie przechowujemy plaintextu
+  prefix      String                        // pierwsze 8 znaków tokenu — do identyfikacji w UI
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  requestCount Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ── Usage tracking ────────────────────────────────────────────────────────────

@@ -89,6 +89,43 @@ def _client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
+# ── API token auth (plan kancelaria) ─────────────────────────────────────────
+import hashlib
+import sqlite3
+
+_DB_PATH = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+
+def _verify_api_token(request: Request) -> str | None:
+    """
+    Sprawdza Bearer token z nagłówka Authorization.
+    Zwraca userId jeśli token jest ważny, None jeśli brak nagłówka.
+    Rzuca 401 jeśli token jest nieprawidłowy lub unieważniony.
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    plain = auth[len("Bearer "):]
+    token_hash = hashlib.sha256(plain.encode()).hexdigest()
+    try:
+        conn = sqlite3.connect(_DB_PATH)
+        row = conn.execute(
+            "SELECT id, userId FROM ApiToken WHERE tokenHash=? AND revokedAt IS NULL",
+            (token_hash,),
+        ).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE ApiToken SET lastUsedAt=datetime('now'), requestCount=requestCount+1 WHERE id=?",
+                (row[0],),
+            )
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        log.warning("Błąd weryfikacji tokenu API: %s", e)
+        row = None
+    if row is None and plain:
+        raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
+    return row[1] if row else None
+
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
 _local_model = None
@@ -441,7 +478,8 @@ def _chunk_to_source(chunk) -> SourceDocument:
 async def search(request: SearchRequest, req: Request) -> SearchResponse:
     """Pure semantic search — returns relevant chunks without LLM generation.
     Useful for lawyers who want to browse source documents directly."""
-    _check_rate_limit(_client_ip(req))
+    if not _verify_api_token(req):
+        _check_rate_limit(_client_ip(req))
     retriever = _init_retriever()
     publisher_filter = request.publisher_filter
     if not publisher_filter and request.source_type_filter:
@@ -474,8 +512,10 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
     Retrieves relevant passages from the ISAP legal corpus (Qdrant),
     then generates an answer using the local fine-tuned model or Claude API.
     Returns the answer along with source citations.
+    Accepts Bearer token (plan kancelaria) or falls back to IP rate-limit.
     """
-    _check_rate_limit(_client_ip(req))
+    if not _verify_api_token(req):
+        _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty")
@@ -539,7 +579,8 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
       data: {"type": "done",    "model_used": "..."}
       data: {"type": "error",   "detail": "..."}
     """
-    _check_rate_limit(_client_ip(req))
+    if not _verify_api_token(req):
+        _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty")

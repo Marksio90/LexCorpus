@@ -130,6 +130,8 @@ export default function AskPage() {
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <a href="/admin" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Admin</a>
               <span className="text-slate-300 dark:text-slate-600">|</span>
+              <a href="/account/api-tokens" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">API</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
               <a href="/api/auth/signout" className="text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors">Wyloguj</a>
             </div>
           </div>

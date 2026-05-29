@@ -19,5 +19,7 @@ export const config = {
     "/compare/:path*",
     "/history/:path*",
     "/admin/:path*",
+    "/account/:path*",
+    "/upgrade/:path*",
   ],
 };
