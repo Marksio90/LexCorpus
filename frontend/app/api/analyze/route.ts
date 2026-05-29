@@ -133,7 +133,8 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (err) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
+        console.error("[analyze] stream error:", err);
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Błąd analizy dokumentu." })}\n\n`));
       } finally {
         controller.close();
       }

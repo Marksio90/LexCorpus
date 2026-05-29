@@ -435,24 +435,37 @@ async def health() -> HealthResponse:
     )
 
 
+_INTERNAL_SECRET = os.getenv("NEWSLETTER_INTERNAL_SECRET", "")
+
+
+def _require_internal_secret(req: Request) -> None:
+    token = req.headers.get("x-internal-secret", "")
+    if not _INTERNAL_SECRET or token != _INTERNAL_SECRET:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @app.get("/sync/status")
-async def sync_status() -> dict:
-    """Return current auto-sync scheduler status."""
+async def sync_status(req: Request) -> dict:
+    """Return current auto-sync scheduler status (internal only)."""
+    _require_internal_secret(req)
     from api.sync import get_status
     return get_status()
 
 
 @app.post("/sync/trigger")
 async def sync_trigger(req: Request) -> dict:
-    """Manually trigger a SAOS sync (rate-limited to admin IPs)."""
+    """Manually trigger a SAOS sync (internal only)."""
+    _require_internal_secret(req)
     _check_rate_limit(_client_ip(req))
     from api.sync import trigger_sync
     return trigger_sync()
 
 
 @app.get("/stats", response_model=StatsResponse)
-async def stats() -> StatsResponse:
-    """Collection statistics broken down by source type."""
+async def stats(req: Request) -> StatsResponse:
+    """Collection statistics broken down by source type (internal only)."""
+    _require_internal_secret(req)
     from datetime import datetime, timezone
     from qdrant_client.http import models as qmodels
 

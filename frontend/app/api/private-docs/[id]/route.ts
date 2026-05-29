@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-/** DELETE /api/private-docs/:id — usuwa dokument i jego kolekcję Qdrant */
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://api:8000";
+
+/** DELETE /api/private-docs/:id — usuwa dokument (tylko rekord DB; czyszczenie Qdrant po stronie API) */
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,10 +21,11 @@ export async function DELETE(
 
   await prisma.privateDocument.delete({ where: { id } });
 
-  // Usuń kolekcję Qdrant asynchronicznie (best-effort)
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
-    .replace(":3000", ":8000");
-  fetch(`${apiUrl}/private-collection/${session.user.id}`, { method: "DELETE" }).catch(() => {});
+  // Sprawdź czy user ma jeszcze inne dokumenty — usuń kolekcję tylko gdy jest pusta
+  const remaining = await prisma.privateDocument.count({ where: { userId: session.user.id } });
+  if (remaining === 0) {
+    fetch(`${INTERNAL_API_URL}/private-collection/${session.user.id}`, { method: "DELETE" }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }

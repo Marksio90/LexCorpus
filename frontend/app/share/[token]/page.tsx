@@ -36,7 +36,12 @@ export default async function SharePage({
   let sources: Source[] = [];
   try { sources = JSON.parse(report.sources) as Source[]; } catch { /* empty */ }
 
-  const answerWithCitations = report.answer.replace(
+  // Escape HTML then inject only safe <sup> citation badges
+  const answerEscaped = report.answer
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const answerWithCitations = answerEscaped.replace(
     /\[(\d+)\]/g,
     (_m, n) => `<sup class="citation">[${n}]</sup>`,
   );
