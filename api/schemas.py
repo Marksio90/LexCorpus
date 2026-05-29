@@ -37,6 +37,7 @@ class AskRequest(BaseModel):
     source_type_filter: Optional[SourceType] = Field(default=None,
         description="Filter by source type: legislation | judgment_nsa | judgment_sn | judgment_tk | judgment_common")
     use_rag: bool = Field(default=True)
+    history: list[dict[str, str]] | None = None  # [{"role": "user"|"assistant", "content": "..."}]
 
 
 class SearchRequest(BaseModel):

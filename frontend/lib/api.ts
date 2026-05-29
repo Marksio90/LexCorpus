@@ -1,4 +1,4 @@
-import type { AskRequest, AskResponse, AnswerConfidence, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
+import type { AskRequest, AskResponse, AnswerConfidence, ConversationTurn, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -8,6 +8,8 @@ export interface StreamCallbacks {
   onDone: (modelUsed: string, confidence?: AnswerConfidence) => void;
   onError: (detail: string) => void;
 }
+
+export type { ConversationTurn };
 
 export async function askQuestionStream(
   question: string,
