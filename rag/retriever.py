@@ -1,9 +1,9 @@
 """
-retriever.py — Semantic retrieval from Qdrant for LexCorpus RAG.
+retriever.py — Hybrid retrieval (dense + BM25 sparse, RRF fusion) from Qdrant.
 
-Given a user query (in Polish), embeds it with the same model used during ingestion
-(sdadas/mmlw-retrieval-roberta-large), searches Qdrant for top-k similar chunks,
-and returns structured results with score and metadata.
+Given a user query (in Polish), embeds it with both a dense model (sentence-transformers)
+and a sparse BM25 model (fastembed), then uses Qdrant's native RRF fusion to combine
+results from both search paths into a single ranked list.
 
 Usage as module:
     from rag.retriever import LegalRetriever
@@ -21,7 +21,9 @@ import json
 import logging
 import sys
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
+from fastembed.sparse.bm25 import Bm25
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from sentence_transformers import SentenceTransformer
@@ -37,6 +39,9 @@ DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
 DEFAULT_COLLECTION = "lexcorpus"
 DEFAULT_QDRANT_PATH = "data/qdrant"
 DEFAULT_TOP_K = 5
+DENSE_VECTOR_NAME = "dense"
+SPARSE_VECTOR_NAME = "sparse"
+PREFETCH_MULTIPLIER = 3  # fetch 3x candidates from each path before RRF fusion
 
 
 @dataclass
@@ -56,7 +61,6 @@ class RetrievedChunk:
         return asdict(self)
 
     def citation(self) -> str:
-        """Format a human-readable citation string for this chunk."""
         parts = []
         if self.title:
             parts.append(self.title)
@@ -73,9 +77,10 @@ class RetrievedChunk:
 
 class LegalRetriever:
     """
-    Semantic retriever for Polish legal documents stored in Qdrant.
+    Hybrid retriever for Polish legal documents stored in Qdrant.
 
-    The retriever is lazy — the model and client are loaded on first use.
+    Combines dense semantic search (sentence-transformers) and sparse BM25 keyword
+    search using Qdrant's Reciprocal Rank Fusion (RRF). Models are loaded lazily.
     """
 
     def __init__(
@@ -89,15 +94,23 @@ class LegalRetriever:
         self.collection = collection
         self.qdrant = qdrant
         self.api_key = api_key
-        self._model: SentenceTransformer | None = None
+        self._dense_model: SentenceTransformer | None = None
+        self._sparse_model: Bm25 | None = None
         self._client: QdrantClient | None = None
 
     @property
-    def model(self) -> SentenceTransformer:
-        if self._model is None:
-            log.info("Loading embedding model '%s' …", self.model_name)
-            self._model = SentenceTransformer(self.model_name)
-        return self._model
+    def dense_model(self) -> SentenceTransformer:
+        if self._dense_model is None:
+            log.info("Loading dense model '%s' …", self.model_name)
+            self._dense_model = SentenceTransformer(self.model_name)
+        return self._dense_model
+
+    @property
+    def sparse_model(self) -> Bm25:
+        if self._sparse_model is None:
+            log.info("Loading BM25 sparse model …")
+            self._sparse_model = Bm25("Qdrant/bm25")
+        return self._sparse_model
 
     @property
     def client(self) -> QdrantClient:
@@ -108,77 +121,77 @@ class LegalRetriever:
             elif self.qdrant.startswith("http"):
                 self._client = QdrantClient(url=self.qdrant, api_key=self.api_key, timeout=30)
             else:
-                from pathlib import Path as _Path
-                _Path(self.qdrant).mkdir(parents=True, exist_ok=True)
+                Path(self.qdrant).mkdir(parents=True, exist_ok=True)
                 self._client = QdrantClient(path=self.qdrant)
         return self._client
 
-    def embed_query(self, query: str) -> list[float]:
-        """Embed a single query string into a normalized vector."""
-        vector = self.model.encode(
-            query,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        )
+    def _embed_dense(self, query: str) -> list[float]:
+        vector = self.dense_model.encode(query, normalize_embeddings=True, convert_to_numpy=True)
         return vector.tolist()
+
+    def _embed_sparse(self, query: str) -> qmodels.SparseVector:
+        sparse = next(iter(self.sparse_model.query_embed(query)))
+        return qmodels.SparseVector(
+            indices=sparse.indices.tolist(),
+            values=sparse.values.tolist(),
+        )
 
     def retrieve(
         self,
         query: str,
         top_k: int = DEFAULT_TOP_K,
-        score_threshold: float | None = None,
         year_filter: str | None = None,
         publisher_filter: str | None = None,
     ) -> list[RetrievedChunk]:
         """
-        Retrieve top-k relevant chunks for a query.
+        Hybrid retrieval: dense + BM25 sparse with RRF fusion.
 
         Args:
             query: The user's question in Polish.
-            top_k: Number of results to return.
-            score_threshold: Minimum cosine similarity score (0–1).
+            top_k: Number of results to return after fusion.
             year_filter: Only return acts from this year.
             publisher_filter: Only return acts from this publisher (e.g. 'WDU').
-
-        Returns:
-            List of RetrievedChunk objects sorted by descending score.
         """
-        query_vector = self.embed_query(query)
+        dense_vector = self._embed_dense(query)
+        sparse_vector = self._embed_sparse(query)
 
-        # Build optional filters
         filter_conditions: list[qmodels.FieldCondition] = []
         if year_filter:
             filter_conditions.append(
-                qmodels.FieldCondition(
-                    key="year",
-                    match=qmodels.MatchValue(value=str(year_filter)),
-                )
+                qmodels.FieldCondition(key="year", match=qmodels.MatchValue(value=str(year_filter)))
             )
         if publisher_filter:
             filter_conditions.append(
-                qmodels.FieldCondition(
-                    key="publisher",
-                    match=qmodels.MatchValue(value=publisher_filter),
-                )
+                qmodels.FieldCondition(key="publisher", match=qmodels.MatchValue(value=publisher_filter))
             )
+        query_filter = qmodels.Filter(must=filter_conditions) if filter_conditions else None
 
-        query_filter = (
-            qmodels.Filter(must=filter_conditions) if filter_conditions else None
-        )
-
+        prefetch_limit = top_k * PREFETCH_MULTIPLIER
         search_results = self.client.query_points(
             collection_name=self.collection,
-            query=query_vector,
+            prefetch=[
+                qmodels.Prefetch(
+                    query=dense_vector,
+                    using=DENSE_VECTOR_NAME,
+                    limit=prefetch_limit,
+                    filter=query_filter,
+                ),
+                qmodels.Prefetch(
+                    query=sparse_vector,
+                    using=SPARSE_VECTOR_NAME,
+                    limit=prefetch_limit,
+                    filter=query_filter,
+                ),
+            ],
+            query=qmodels.FusionQuery(fusion=qmodels.Fusion.RRF),
             limit=top_k,
-            query_filter=query_filter,
-            score_threshold=score_threshold,
             with_payload=True,
         ).points
 
         chunks = []
         for hit in search_results:
             payload = hit.payload or {}
-            chunk = RetrievedChunk(
+            chunks.append(RetrievedChunk(
                 score=round(float(hit.score), 4),
                 text=payload.get("text", ""),
                 act_id=payload.get("act_id", ""),
@@ -189,59 +202,47 @@ class LegalRetriever:
                 url=payload.get("url", ""),
                 chunk_index=int(payload.get("chunk_index", 0)),
                 total_chunks=int(payload.get("total_chunks", 1)),
-            )
-            chunks.append(chunk)
-
+            ))
         return chunks
 
     def format_context(self, chunks: list[RetrievedChunk], max_chars: int = 4000) -> str:
-        """
-        Format retrieved chunks into a single context string for the LLM prompt.
-        Includes citations above each chunk.
-        """
         parts = []
         total_chars = 0
-
         for i, chunk in enumerate(chunks, 1):
-            citation = chunk.citation()
-            block = f"[{i}] {citation}\n{chunk.text}"
+            block = f"[{i}] {chunk.citation()}\n{chunk.text}"
             if total_chars + len(block) > max_chars:
                 remaining = max_chars - total_chars
                 if remaining > 200:
-                    block = block[:remaining] + "…"
-                    parts.append(block)
+                    parts.append(block[:remaining] + "…")
                 break
             parts.append(block)
-            total_chars += len(block) + 2  # +2 for separating newlines
-
+            total_chars += len(block) + 2
         return "\n\n".join(parts)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Retrieve relevant legal chunks for a query.")
+    parser = argparse.ArgumentParser(description="Hybrid retrieval for Polish legal docs.")
     parser.add_argument("--query", required=True, help="Question in Polish")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
-    parser.add_argument("--url", default=DEFAULT_QDRANT_URL)
+    parser.add_argument("--qdrant", default=DEFAULT_QDRANT_PATH)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--year", default=None, help="Filter by year")
-    parser.add_argument("--publisher", default=None, help="Filter by publisher (WDU/WMP)")
-    parser.add_argument("--score-threshold", type=float, default=None)
-    parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument("--year", default=None)
+    parser.add_argument("--publisher", default=None)
+    parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     retriever = LegalRetriever(
         model_name=args.model,
         collection=args.collection,
-        qdrant_url=args.url,
+        qdrant=args.qdrant,
         api_key=args.api_key,
     )
 
     results = retriever.retrieve(
         args.query,
         top_k=args.top_k,
-        score_threshold=args.score_threshold,
         year_filter=args.year,
         publisher_filter=args.publisher,
     )

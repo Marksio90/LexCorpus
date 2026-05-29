@@ -291,7 +291,7 @@ async def health() -> HealthResponse:
         log.warning("Qdrant health check failed: %s", exc)
 
     model_loaded = _local_model is not None
-    embedding_loaded = _retriever is not None and _retriever._model is not None
+    embedding_loaded = _retriever is not None and _retriever._dense_model is not None
 
     return HealthResponse(
         status="ok",
