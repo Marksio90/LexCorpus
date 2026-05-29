@@ -16,6 +16,34 @@ services:
       timeout: 5s
       retries: 5
 
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-ingest
+    environment:
+      - QDRANT_PATH=http://qdrant:6333
+      - QDRANT_COLLECTION=lexcorpus
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+      - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      sh -c "
+        if [ -f /app/data/processed/chunks.jsonl ]; then
+          python rag/ingest.py
+            --input /app/data/processed/chunks.jsonl
+            --qdrant http://qdrant:6333
+            --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2};
+        else
+          echo 'No chunks.jsonl found — skipping ingest. Run scripts/fetch_isap.py and scripts/preprocess.py first.';
+        fi
+      "
+
   api:
     build:
       context: .
@@ -33,6 +61,8 @@ services:
     depends_on:
       qdrant:
         condition: service_healthy
+      ingest:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
