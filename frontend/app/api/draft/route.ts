@@ -5,7 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { DRAFT_TEMPLATES } from "@/lib/draft-templates";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const SYSTEM_PROMPT = `Jesteś doświadczonym polskim prawnikiem specjalizującym się w sporządzaniu dokumentów prawnych.
 Twoje dokumenty są:
@@ -54,7 +56,7 @@ Wskazówki prawne: ${template.systemHint}
 
 Wygeneruj kompletny, gotowy do podpisania dokument.`;
 
-  const stream = await openai.chat.completions.create({
+  const stream = await getOpenAI().chat.completions.create({
     model:  process.env.OPENAI_MODEL ?? "gpt-4o-mini",
     stream: true,
     messages: [
