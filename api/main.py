@@ -56,6 +56,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
 RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
+EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -70,7 +71,14 @@ def _init_retriever():
     if _retriever is not None:
         return _retriever
 
-    from rag.retriever import LegalRetriever
+    from rag.retriever import LegalRetriever, _make_openai_expander
+
+    expander = None
+    if EXPAND_ENABLED and OPENAI_API_KEY:
+        expander = _make_openai_expander(OPENAI_API_KEY)
+        log.info("Query expansion enabled (gpt-4o-mini)")
+    elif EXPAND_ENABLED:
+        log.warning("EXPAND_ENABLED=true but OPENAI_API_KEY not set — expansion disabled")
 
     _retriever = LegalRetriever(
         model_name=EMBEDDING_MODEL,
@@ -79,6 +87,7 @@ def _init_retriever():
         qdrant=QDRANT_PATH,
         api_key=QDRANT_API_KEY,
         rerank=RERANK_ENABLED,
+        query_expander=expander,
     )
     log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
     return _retriever

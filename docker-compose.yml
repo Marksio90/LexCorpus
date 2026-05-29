@@ -106,6 +106,7 @@ services:
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
       - RERANK_MODEL=${RERANK_MODEL:-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
       - RERANK_ENABLED=${RERANK_ENABLED:-true}
+      - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
     depends_on:
       qdrant:
