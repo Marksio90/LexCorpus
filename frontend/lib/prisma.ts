@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
 import path from "path";
 
@@ -8,7 +8,7 @@ function createPrismaClient() {
   // libsql expects file: prefix for local files
   const url = rawPath.startsWith("file:") ? rawPath : `file:${rawPath}`;
   const libsql  = createClient({ url });
-  const adapter = new PrismaLibSQL(libsql);
+  const adapter = new PrismaLibSql(libsql);
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error"] : [],
