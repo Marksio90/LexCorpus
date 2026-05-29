@@ -25,5 +25,6 @@ export const config = {
     "/draft/:path*",
     "/analyze/:path*",
     "/registry/:path*",
+    "/timeline/:path*",
   ],
 };

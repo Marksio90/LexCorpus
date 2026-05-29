@@ -216,6 +216,12 @@ export default function RegistryPage() {
                       {" · "}od {new Date(sub.createdAt).toLocaleDateString("pl-PL")}
                     </p>
                   </div>
+                  <a
+                    href={`/timeline/${encodeURIComponent(sub.actId)}`}
+                    className="shrink-0 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Historia →
+                  </a>
                   {sub.url && (
                     <a
                       href={sub.url}
