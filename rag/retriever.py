@@ -1,9 +1,9 @@
 """
-retriever.py — Hybrid retrieval (dense + BM25 sparse, RRF fusion) from Qdrant.
+retriever.py — Hybrid retrieval (dense + BM25 sparse, RRF fusion) + cross-encoder re-ranking.
 
-Given a user query (in Polish), embeds it with both a dense model (sentence-transformers)
-and a sparse BM25 model (fastembed), then uses Qdrant's native RRF fusion to combine
-results from both search paths into a single ranked list.
+Pipeline:
+  1. Hybrid search: dense bi-encoder + BM25 sparse → RRF fusion → top N candidates
+  2. Cross-encoder re-ranking: scores each (query, candidate) pair → final top_k
 
 Usage as module:
     from rag.retriever import LegalRetriever
@@ -12,6 +12,7 @@ Usage as module:
 
 Usage as script:
     python rag/retriever.py --query "Jakie są prawa pracownika?"
+    python rag/retriever.py --query "Jakie są prawa pracownika?" --no-rerank
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from pathlib import Path
 from fastembed.sparse.bm25 import Bm25
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,12 +37,13 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
+DEFAULT_RERANK_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 DEFAULT_COLLECTION = "lexcorpus"
 DEFAULT_QDRANT_PATH = "data/qdrant"
 DEFAULT_TOP_K = 5
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
-PREFETCH_MULTIPLIER = 3  # fetch 3x candidates from each path before RRF fusion
+PREFETCH_MULTIPLIER = 4  # fetch 4x candidates from each path before RRF + re-rank
 
 
 @dataclass
@@ -86,16 +88,21 @@ class LegalRetriever:
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL,
+        rerank_model_name: str = DEFAULT_RERANK_MODEL,
         collection: str = DEFAULT_COLLECTION,
         qdrant: str = DEFAULT_QDRANT_PATH,
         api_key: str | None = None,
+        rerank: bool = True,
     ) -> None:
         self.model_name = model_name
+        self.rerank_model_name = rerank_model_name
         self.collection = collection
         self.qdrant = qdrant
         self.api_key = api_key
+        self.rerank = rerank
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
+        self._rerank_model: CrossEncoder | None = None
         self._client: QdrantClient | None = None
 
     @property
@@ -111,6 +118,13 @@ class LegalRetriever:
             log.info("Loading BM25 sparse model …")
             self._sparse_model = Bm25("Qdrant/bm25")
         return self._sparse_model
+
+    @property
+    def rerank_model(self) -> CrossEncoder:
+        if self._rerank_model is None:
+            log.info("Loading cross-encoder '%s' …", self.rerank_model_name)
+            self._rerank_model = CrossEncoder(self.rerank_model_name)
+        return self._rerank_model
 
     @property
     def client(self) -> QdrantClient:
@@ -142,16 +156,20 @@ class LegalRetriever:
         top_k: int = DEFAULT_TOP_K,
         year_filter: str | None = None,
         publisher_filter: str | None = None,
+        rerank: bool | None = None,
     ) -> list[RetrievedChunk]:
         """
-        Hybrid retrieval: dense + BM25 sparse with RRF fusion.
+        Hybrid retrieval: dense + BM25 sparse with RRF fusion, then cross-encoder re-ranking.
 
         Args:
             query: The user's question in Polish.
-            top_k: Number of results to return after fusion.
+            top_k: Number of results to return after re-ranking.
             year_filter: Only return acts from this year.
             publisher_filter: Only return acts from this publisher (e.g. 'WDU').
+            rerank: Override instance-level rerank setting for this call.
         """
+        use_rerank = self.rerank if rerank is None else rerank
+
         dense_vector = self._embed_dense(query)
         sparse_vector = self._embed_sparse(query)
 
@@ -166,7 +184,10 @@ class LegalRetriever:
             )
         query_filter = qmodels.Filter(must=filter_conditions) if filter_conditions else None
 
+        # Fetch more candidates when re-ranking so cross-encoder has more to choose from
         prefetch_limit = top_k * PREFETCH_MULTIPLIER
+        candidate_limit = top_k * PREFETCH_MULTIPLIER if use_rerank else top_k
+
         search_results = self.client.query_points(
             collection_name=self.collection,
             prefetch=[
@@ -184,14 +205,14 @@ class LegalRetriever:
                 ),
             ],
             query=qmodels.FusionQuery(fusion=qmodels.Fusion.RRF),
-            limit=top_k,
+            limit=candidate_limit,
             with_payload=True,
         ).points
 
-        chunks = []
+        candidates = []
         for hit in search_results:
             payload = hit.payload or {}
-            chunks.append(RetrievedChunk(
+            candidates.append(RetrievedChunk(
                 score=round(float(hit.score), 4),
                 text=payload.get("text", ""),
                 act_id=payload.get("act_id", ""),
@@ -203,7 +224,20 @@ class LegalRetriever:
                 chunk_index=int(payload.get("chunk_index", 0)),
                 total_chunks=int(payload.get("total_chunks", 1)),
             ))
-        return chunks
+
+        if not use_rerank or len(candidates) <= top_k:
+            return candidates[:top_k]
+
+        # Cross-encoder re-ranking: score each (query, text) pair
+        pairs = [(query, c.text) for c in candidates]
+        ce_scores = self.rerank_model.predict(pairs)
+        ranked = sorted(zip(ce_scores, candidates), key=lambda x: x[0], reverse=True)
+
+        results = []
+        for ce_score, chunk in ranked[:top_k]:
+            chunk.score = round(float(ce_score), 4)
+            results.append(chunk)
+        return results
 
     def format_context(self, chunks: list[RetrievedChunk], max_chars: int = 4000) -> str:
         parts = []
@@ -228,6 +262,8 @@ def main() -> None:
     parser.add_argument("--qdrant", default=DEFAULT_QDRANT_PATH)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--rerank-model", default=DEFAULT_RERANK_MODEL)
+    parser.add_argument("--no-rerank", action="store_true", help="Disable cross-encoder re-ranking")
     parser.add_argument("--year", default=None)
     parser.add_argument("--publisher", default=None)
     parser.add_argument("--json", action="store_true")
@@ -235,9 +271,11 @@ def main() -> None:
 
     retriever = LegalRetriever(
         model_name=args.model,
+        rerank_model_name=args.rerank_model,
         collection=args.collection,
         qdrant=args.qdrant,
         api_key=args.api_key,
+        rerank=not args.no_rerank,
     )
 
     results = retriever.retrieve(

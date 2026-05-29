@@ -54,6 +54,8 @@ LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
+RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -72,9 +74,11 @@ def _init_retriever():
 
     _retriever = LegalRetriever(
         model_name=EMBEDDING_MODEL,
+        rerank_model_name=RERANK_MODEL,
         collection=QDRANT_COLLECTION,
         qdrant=QDRANT_PATH,
         api_key=QDRANT_API_KEY,
+        rerank=RERANK_ENABLED,
     )
     log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
     return _retriever
