@@ -1,21 +1,89 @@
 "use client";
 
-import { useRef } from "react";
-import type { AskResponse } from "@/lib/types";
-import { SourceList } from "./SourceList";
+import { useState } from "react";
+import type { AskResponse, SourceDocument } from "@/lib/types";
+import { SourceList, SourceTypeBadge, buildExternalLink } from "./SourceList";
 
 interface AnswerCardProps {
   response: AskResponse;
   streaming?: boolean;
 }
 
-/** Replace [1], [2] etc. in answer text with clickable anchor links. */
-function AnswerText({ text, sourceCount }: { text: string; sourceCount: number }) {
-  if (sourceCount === 0) {
-    return <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">{text}</p>;
+/** Tooltip popover shown on hover over a [N] citation badge. */
+function CitationTooltip({ source, num }: { source: SourceDocument; num: number }) {
+  const externalLink = buildExternalLink(source);
+  return (
+    <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl p-3 text-left pointer-events-auto">
+      {/* Arrow */}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-200 dark:border-t-slate-600" />
+      <div className="flex items-start gap-2 mb-2">
+        <span className="flex-shrink-0 w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">
+          {num}
+        </span>
+        <SourceTypeBadge type={source.source_type ?? "unknown"} />
+      </div>
+      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-snug mb-1 line-clamp-2">
+        {source.title || source.act_id}
+      </p>
+      {(source.year || source.pos) && (
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+          {[source.year, source.pos ? `poz. ${source.pos}` : ""].filter(Boolean).join(" · ")}
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            document.getElementById(`source-${num}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+          className="text-xs text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        >
+          ↓ Przejdź do źródła
+        </button>
+        {externalLink && (
+          <a
+            href={externalLink.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {externalLink.label}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CitationBadge({ num, source }: { num: number; source: SourceDocument }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="relative inline-flex align-middle">
+      <button
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => document.getElementById(`source-${num}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        className="inline-flex items-center justify-center w-5 h-5 mx-0.5 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer"
+        aria-label={`Źródło ${num}: ${source.title}`}
+      >
+        {num}
+      </button>
+      {open && <CitationTooltip source={source} num={num} />}
+    </span>
+  );
+}
+
+function AnswerText({ text, sources }: { text: string; sources: SourceDocument[] }) {
+  if (sources.length === 0) {
+    return (
+      <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">
+        {text}
+      </p>
+    );
   }
 
-  // Split on citation markers like [1], [2], ..., [99]
   const parts = text.split(/(\[\d+\])/g);
 
   return (
@@ -24,21 +92,9 @@ function AnswerText({ text, sourceCount }: { text: string; sourceCount: number }
         const match = part.match(/^\[(\d+)\]$/);
         if (!match) return part;
         const num = parseInt(match[1], 10);
-        if (num < 1 || num > sourceCount) return part;
-        return (
-          <a
-            key={i}
-            href={`#source-${num}`}
-            onClick={(e) => {
-              e.preventDefault();
-              document.getElementById(`source-${num}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
-            className="inline-flex items-center justify-center w-5 h-5 mx-0.5 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer align-middle"
-            title={`Przejdź do źródła ${num}`}
-          >
-            {num}
-          </a>
-        );
+        const source = sources[num - 1];
+        if (!source) return part;
+        return <CitationBadge key={i} num={num} source={source} />;
       })}
     </p>
   );
@@ -78,7 +134,7 @@ export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
           </div>
         </div>
 
-        <AnswerText text={answer} sourceCount={sources.length} />
+        <AnswerText text={answer} sources={sources} />
         {streaming && (
           <span className="inline-block w-0.5 h-4 ml-0.5 bg-slate-500 dark:bg-slate-400 animate-pulse align-middle" />
         )}
