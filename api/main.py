@@ -39,9 +39,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from api.schemas import (AskRequest, AskResponse, ErrorResponse, HealthResponse,
-                         SearchRequest, SearchResponse, SourceBreakdown, SourceDocument,
-                         StatsResponse, publisher_to_source_type)
+from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorResponse,
+                         HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
+                         SourceDocument, StatsResponse, publisher_to_source_type)
 
 load_dotenv()
 
@@ -82,6 +82,56 @@ def _check_rate_limit(ip: str) -> None:
             detail=f"Zbyt wiele zapytań. Limit: {RATE_LIMIT_REQUESTS} na {RATE_LIMIT_WINDOW}s.",
         )
     _rate_buckets[ip].append(now)
+
+def _compute_confidence(chunks: list) -> "AnswerConfidence":
+    """
+    Oblicza pewność odpowiedzi na podstawie score'ów pobranych chunków.
+
+    Algorytm:
+    - top_score:   najwyższy score (rerank lub dense) spośród chunków
+    - coverage:    ile z top-3 chunków przekracza próg 0.6
+    - score:       średnia ważona top_score (60%) + coverage (40%)
+    """
+    if not chunks:
+        return AnswerConfidence(
+            score=0.0, level="niska", n_sources=0, top_source_score=0.0,
+            explanation="Brak dokumentów — nie udało się znaleźć powiązanych przepisów.",
+        )
+
+    scores     = [c.score for c in chunks]
+    top_score  = max(scores)
+    threshold  = 0.60
+    supporting = sum(1 for s in scores[:3] if s >= threshold)
+    coverage   = supporting / min(3, len(scores))
+    combined   = round(top_score * 0.6 + coverage * 0.4, 3)
+
+    if combined >= 0.80:
+        level = "wysoka"
+        explanation = (
+            f"Odpowiedź oparta na {len(chunks)} źródłach o wysokiej trafności "
+            f"(najwyższy score: {top_score:.0%}). Można jej zaufać."
+        )
+    elif combined >= 0.60:
+        level = "średnia"
+        explanation = (
+            f"Znaleziono powiązane przepisy, ale pokrycie jest częściowe "
+            f"(score: {top_score:.0%}). Zalecana weryfikacja."
+        )
+    else:
+        level = "niska"
+        explanation = (
+            f"Dokumenty powiązane z pytaniem mają niski score ({top_score:.0%}). "
+            f"Odpowiedź może być niepełna — skonsultuj z prawnikiem."
+        )
+
+    return AnswerConfidence(
+        score=combined,
+        level=level,
+        n_sources=len(chunks),
+        top_source_score=round(top_score, 3),
+        explanation=explanation,
+    )
+
 
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")
@@ -565,6 +615,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
         sources=sources,
         model_used=model_used,
         retrieval_used=retrieval_used,
+        confidence=_compute_confidence(retrieved_chunks),
     )
 
 
@@ -656,7 +707,9 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
             yield sse({"type": "error", "detail": str(exc)})
             return
 
-        yield sse({"type": "done", "model_used": model_used})
+        confidence = _compute_confidence(retrieved_chunks)
+        yield sse({"type": "done", "model_used": model_used,
+                   "confidence": confidence.model_dump()})
 
     return StreamingResponse(
         event_stream(),
@@ -665,6 +718,90 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",  # disable nginx buffering
         },
+    )
+
+
+@app.delete("/private-collection/{user_id}")
+async def delete_private_collection(user_id: str, req: Request) -> dict:
+    """Usuwa prywatną kolekcję Qdrant użytkownika."""
+    _verify_api_token(req)   # wymaga tokenu lub sesji
+    collection = f"lexcorpus_private_{user_id}"
+    try:
+        retriever = _init_retriever()
+        retriever.client.delete_collection(collection)
+        log.info("Usunięto kolekcję %s", collection)
+    except Exception as e:
+        log.warning("Nie można usunąć kolekcji %s: %s", collection, e)
+    return {"ok": True}
+
+
+@app.post("/ask/private")
+async def ask_private(request: AskRequest, req: Request) -> AskResponse:
+    """
+    RAG po prywatnej kolekcji dokumentów + publicznym korpusie.
+    Wymaga Bearer tokenu lub sesji z planem Pro/Kancelaria.
+    """
+    user_id = _verify_api_token(req)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Wymagany token API lub sesja.")
+
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Pytanie nie może być puste.")
+
+    retriever = _init_retriever()
+    private_collection = f"lexcorpus_private_{user_id}"
+    all_chunks = []
+
+    # Szukaj w publicznym korpusie
+    try:
+        public_chunks = retriever.retrieve(query=question, top_k=request.top_k or 5)
+        all_chunks.extend(public_chunks)
+    except Exception as e:
+        log.warning("Błąd retrieval publiczny: %s", e)
+
+    # Szukaj w prywatnej kolekcji
+    try:
+        from qdrant_client.http import models as qmodels
+        query_vec = retriever.embed_query(question)
+        priv_results = retriever.client.search(
+            collection_name=private_collection,
+            query_vector=query_vec,
+            limit=5,
+            with_payload=True,
+        )
+        for r in priv_results:
+            from rag.retriever import RetrievedChunk
+            chunk = RetrievedChunk(
+                act_id=r.payload.get("doc_id", "private"),
+                chunk_index=r.payload.get("chunk_index", 0),
+                title=f"[Prywatny dokument]",
+                year=None, publisher="PRIVATE",
+                source_type="private",
+                text=r.payload.get("text", ""),
+                score=r.score, url=None,
+                total_chunks=1,
+            )
+            all_chunks.append(chunk)
+    except Exception as e:
+        log.debug("Brak prywatnej kolekcji lub błąd: %s", e)
+
+    # Rerank all combined
+    if retriever.use_rerank and all_chunks:
+        all_chunks = retriever._rerank(question, all_chunks)
+
+    context_str = retriever.format_context(all_chunks[:8], max_chars=3500)
+    prompt      = build_prompt(question, context_str)
+    answer, model_used = generate_answer(prompt)
+    sources = [_chunk_to_source(c) for c in all_chunks[:8]]
+
+    return AskResponse(
+        question=question,
+        answer=answer,
+        sources=sources,
+        model_used=model_used,
+        retrieval_used=True,
+        confidence=_compute_confidence(all_chunks[:8]),
     )
 
 

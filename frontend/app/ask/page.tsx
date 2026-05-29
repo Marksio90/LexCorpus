@@ -5,9 +5,10 @@ import { AskForm } from "@/components/AskForm";
 import { AnswerCard } from "@/components/AnswerCard";
 import { Sidebar } from "@/components/Sidebar";
 import { UsageBar } from "@/components/UsageBar";
+import { AlertsBadge } from "@/components/AlertsBadge";
 import { askQuestionStream } from "@/lib/api";
 import { saveToHistory } from "@/lib/history";
-import type { AskResponse, SourceDocument, SourceType } from "@/lib/types";
+import type { AskResponse, AnswerConfidence, SourceDocument, SourceType } from "@/lib/types";
 
 export default function AskPage() {
   const [response, setResponse] = useState<AskResponse | null>(null);
@@ -20,6 +21,7 @@ export default function AskPage() {
   const answerRef = useRef("");
   const sourcesRef = useRef<SourceDocument[]>([]);
   const retrievalRef = useRef(false);
+  const confidenceRef = useRef<AnswerConfidence | undefined>(undefined);
 
   const handleAsk = useCallback(async (question: string, sourceType?: SourceType | null) => {
     setLoading(true);
@@ -29,6 +31,7 @@ export default function AskPage() {
     answerRef.current = "";
     sourcesRef.current = [];
     retrievalRef.current = false;
+    confidenceRef.current = undefined;
 
     try {
       // Sprawdź i inkrementuj dzienny limit
@@ -51,13 +54,15 @@ export default function AskPage() {
           answerRef.current += text;
           setStreamingText(answerRef.current);
         },
-        onDone(modelUsed) {
+        onDone(modelUsed, confidence) {
+          confidenceRef.current = confidence;
           const result: AskResponse = {
             question,
             answer: answerRef.current,
             sources: sourcesRef.current,
             model_used: modelUsed,
             retrieval_used: retrievalRef.current,
+            confidence,
           };
           setStreamingText(null);
           setResponse(result);
@@ -129,6 +134,8 @@ export default function AskPage() {
               <a href="/history" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Historia</a>
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <a href="/admin" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Admin</a>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <AlertsBadge />
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <a href="/account/api-tokens" className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">API</a>
               <span className="text-slate-300 dark:text-slate-600">|</span>

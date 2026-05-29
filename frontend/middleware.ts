@@ -21,5 +21,13 @@ export const config = {
     "/admin/:path*",
     "/account/:path*",
     "/upgrade/:path*",
+    "/alerts/:path*",
+    "/draft/:path*",
+    "/analyze/:path*",
+    "/registry/:path*",
+    "/timeline/:path*",
+    "/precedents/:path*",
+    "/expert/:path*",
+    "/analytics/:path*",
   ],
 };

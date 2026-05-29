@@ -43,6 +43,10 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
+  // Newsletter
+  newsletterEnabled    Boolean   @default(true)
+  newsletterLastSentAt DateTime?
+
   // Subscription tier
   tier                 String    @default("free")   // "free" | "pro" | "kancelaria"
   tierExpiresAt        DateTime?
@@ -56,7 +60,45 @@ model User {
   sessions   Session[]
   usageLogs  UsageLog[]
   queryLogs  QueryLog[]
-  apiTokens  ApiToken[]
+  apiTokens        ApiToken[]
+  alerts           LegalAlert[]
+  privateDocuments PrivateDocument[]
+  widgetConfig     WidgetConfig?
+  registrySubs     RegistrySubscription[]
+  expertRequests   ExpertRequest[]        @relation("Requester")
+  expertResponses  ExpertRequest[]        @relation("Responder")
+}
+
+// ── Legal Diff alerts ─────────────────────────────────────────────────────────
+
+model LegalChange {
+  id          String   @id @default(cuid())
+  detectedAt  DateTime @default(now())
+  actId       String
+  title       String
+  sourceType  String
+  year        Int?
+  summary     String   // 1-2 zdania o zmianie (generowane przez LLM)
+  chunkText   String   // fragment nowego/zmienionego przepisu
+  url         String?
+
+  alerts LegalAlert[]
+}
+
+model LegalAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  changeId    String
+  similarity  Float     // cosine similarity pytania użytkownika do zmiany
+  question    String    // pytanie które wygenerowało subskrypcję
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  change LegalChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, changeId])
+  @@index([userId, readAt])
 }
 
 model VerificationToken {
@@ -99,6 +141,97 @@ model ApiToken {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+// ── Private documents (per-user RAG) ─────────────────────────────────────────
+
+model PrivateDocument {
+  id           String   @id @default(cuid())
+  userId       String
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  status       String   @default("processing") // "processing"|"ready"|"error"
+  errorMsg     String?
+  chunkCount   Int      @default(0)
+  uploadedAt   DateTime @default(now())
+  processedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ── Shareable reports ─────────────────────────────────────────────────────────
+
+model SharedReport {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  question  String
+  answer    String
+  sources   String   // JSON
+  modelUsed String
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@index([token])
+}
+
+// ── Embeddable widget (plan kancelaria) ───────────────────────────────────────
+
+model WidgetConfig {
+  id             String   @id @default(cuid())
+  userId         String   @unique          // one widget per user
+  token          String   @unique          // public embed token (non-secret)
+  enabled        Boolean  @default(true)
+  title          String   @default("Asystent prawny")
+  welcomeMsg     String   @default("Cześć! Jestem asystentem prawnym. W czym mogę pomóc?")
+  accentColor    String   @default("#2563eb")
+  logoUrl        String?
+  allowedDomains String   @default("*")   // comma-sep or "*"
+  requestCount   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Expert marketplace ────────────────────────────────────────────────────────
+
+model ExpertRequest {
+  id           String    @id @default(cuid())
+  requesterId  String
+  question     String
+  context      String?   // AI answer context (optional, user can attach)
+  status       String    @default("open")  // open | answered | closed
+  expertId     String?
+  response     String?
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  requester User  @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  expert    User? @relation("Responder", fields: [expertId],    references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([requesterId])
+}
+
+// ── Registry subscriptions ────────────────────────────────────────────────────
+
+model RegistrySubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  actId     String   // ISAP actId / identifier
+  title     String   // display name of the act
+  url       String?  // ISAP source URL
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, actId])
+  @@index([actId])
   @@index([userId])
 }
 
