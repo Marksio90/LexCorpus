@@ -51,6 +51,7 @@ DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 PREFETCH_MULTIPLIER = 4  # fetch 4x candidates per query before RRF + re-rank
 EXPAND_N = 2             # number of alternative queries to generate (+ original = 3 total)
+CONTEXT_EXPAND = True    # fetch neighbor chunks for wider context in format_context()
 
 
 @dataclass
@@ -208,14 +209,39 @@ class LegalRetriever:
             ))
         return results
 
+    def _fetch_neighbor_text(self, chunk: RetrievedChunk, direction: int) -> str:
+        """Fetch the adjacent chunk (direction=-1 for prev, +1 for next) from Qdrant."""
+        target_index = chunk.chunk_index + direction
+        if target_index < 0:
+            return ""
+        try:
+            points, _ = self.client.scroll(
+                collection_name=self.collection,
+                scroll_filter=qmodels.Filter(must=[
+                    qmodels.FieldCondition(key="act_id", match=qmodels.MatchValue(value=chunk.act_id)),
+                    qmodels.FieldCondition(key="chunk_index", match=qmodels.MatchValue(value=target_index)),
+                ]),
+                limit=1,
+                with_payload=True,
+                with_vectors=False,
+            )
+            if points:
+                return points[0].payload.get("text", "")
+        except Exception as exc:
+            log.debug("Neighbor fetch failed for %s[%d]: %s", chunk.act_id, target_index, exc)
+        return ""
+
     def retrieve(
         self,
         query: str,
         top_k: int = DEFAULT_TOP_K,
         year_filter: str | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
         publisher_filter: str | None = None,
         rerank: bool | None = None,
         expand: bool | None = None,
+        expand_context: bool = CONTEXT_EXPAND,
     ) -> list[RetrievedChunk]:
         """
         Full pipeline: query expansion → hybrid search → dedup → cross-encoder re-rank.
@@ -223,10 +249,13 @@ class LegalRetriever:
         Args:
             query: The user's question in Polish.
             top_k: Number of results to return after re-ranking.
-            year_filter: Only return acts from this year.
+            year_filter: Only return acts from this exact year.
+            year_from: Only return acts from this year onwards (inclusive).
+            year_to: Only return acts up to this year (inclusive).
             publisher_filter: Only return acts from this publisher (e.g. 'WDU').
             rerank: Override instance-level rerank setting for this call.
             expand: Override query expansion for this call (requires query_expander set).
+            expand_context: Fetch neighboring chunks and merge into retrieved text.
         """
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
@@ -235,6 +264,16 @@ class LegalRetriever:
         if year_filter:
             filter_conditions.append(
                 qmodels.FieldCondition(key="year", match=qmodels.MatchValue(value=str(year_filter)))
+            )
+        if year_from or year_to:
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="year",
+                    range=qmodels.Range(
+                        gte=str(year_from) if year_from else None,
+                        lte=str(year_to) if year_to else None,
+                    ),
+                )
             )
         if publisher_filter:
             filter_conditions.append(
@@ -265,7 +304,8 @@ class LegalRetriever:
         candidates = list(seen.values())
 
         if not use_rerank or len(candidates) <= top_k:
-            return sorted(candidates, key=lambda c: c.score, reverse=True)[:top_k]
+            results = sorted(candidates, key=lambda c: c.score, reverse=True)[:top_k]
+            return self._expand_context(results) if expand_context else results
 
         # Cross-encoder re-ranking using the original query (not expansions)
         pairs = [(query, c.text) for c in candidates]
@@ -276,7 +316,23 @@ class LegalRetriever:
         for ce_score, chunk in ranked[:top_k]:
             chunk.score = round(float(ce_score), 4)
             results.append(chunk)
-        return results
+        return self._expand_context(results) if expand_context else results
+
+    def _expand_context(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        """Enrich each chunk with text from its immediate neighbors in the same document."""
+        result_keys = {f"{c.act_id}___{c.chunk_index}" for c in chunks}
+        for chunk in chunks:
+            parts = []
+            prev = self._fetch_neighbor_text(chunk, -1)
+            if prev and f"{chunk.act_id}___{chunk.chunk_index - 1}" not in result_keys:
+                parts.append(prev)
+            parts.append(chunk.text)
+            nxt = self._fetch_neighbor_text(chunk, +1)
+            if nxt and f"{chunk.act_id}___{chunk.chunk_index + 1}" not in result_keys:
+                parts.append(nxt)
+            if len(parts) > 1:
+                chunk.text = "\n\n".join(parts)
+        return chunks
 
     def format_context(self, chunks: list[RetrievedChunk], max_chars: int = 4000) -> str:
         parts = []

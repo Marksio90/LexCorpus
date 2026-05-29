@@ -166,6 +166,50 @@ def split_into_chunks(text: str, chunk_tokens: int = 512, overlap_tokens: int = 
     return [c for c in chunks if len(c) >= 50]
 
 
+# Patterns that mark section boundaries in Polish court judgments
+_SAOS_SECTION_RE = re.compile(
+    r"(?m)^[ \t]*("
+    r"TEZA[Y]?|"
+    r"SENTENCJA|OSNOWA|W IMIENIU RZECZYPOSPOLITEJ POLSKIEJ|"
+    r"UZASADNIENIE|MOTYWY ROZSTRZYGNIĘCIA"
+    r")[ \t]*$",
+    re.IGNORECASE,
+)
+
+
+def _split_saos_sections(text: str) -> dict[str, str]:
+    """Split a judgment into named sections (thesis, ruling, justification)."""
+    label_map = {
+        "teza": "thesis", "tezy": "thesis",
+        "sentencja": "ruling", "osnowa": "ruling",
+        "w imieniu rzeczypospolitej polskiej": "ruling",
+        "uzasadnienie": "justification",
+        "motywy rozstrzygnięcia": "justification",
+    }
+    sections: dict[str, str] = {}
+    current_label = "preamble"
+    current_parts: list[str] = []
+
+    for line in text.splitlines(keepends=True):
+        m = _SAOS_SECTION_RE.match(line)
+        if m:
+            content = "".join(current_parts).strip()
+            if content:
+                sections.setdefault(current_label, "")
+                sections[current_label] = (sections[current_label] + "\n\n" + content).strip()
+            current_label = label_map.get(m.group(1).lower(), m.group(1).lower())
+            current_parts = []
+        else:
+            current_parts.append(line)
+
+    content = "".join(current_parts).strip()
+    if content:
+        sections.setdefault(current_label, "")
+        sections[current_label] = (sections[current_label] + "\n\n" + content).strip()
+
+    return sections
+
+
 def _is_saos_record(record: dict) -> bool:
     return "saos_id" in record or "court_type" in record
 
@@ -212,7 +256,6 @@ def _process_saos_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
     judgment_date = record.get("judgment_date", "")
     year = judgment_date[:4] if judgment_date else ""
 
-    # Build a descriptive title: "court_type | case_number | date"
     court_label = {
         "SUPREME": "Sąd Najwyższy",
         "ADMINISTRATIVE": "Sąd Administracyjny (NSA/WSA)",
@@ -222,34 +265,81 @@ def _process_saos_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
     }.get(court_type, court_type)
     title = f"{court_label} | {case_number} | {judgment_date}"
 
-    # Prepend cited regulations as context before the judgment text
+    # Build regulation prefix (prepended to every chunk for keyword retrieval)
     regs = record.get("referenced_regulations") or []
-    reg_context = ""
+    reg_prefix = ""
     if regs:
         reg_lines = [r["citation"] for r in regs if r.get("citation")][:10]
         if reg_lines:
-            reg_context = "Podstawy prawne: " + "; ".join(reg_lines) + "\n\n"
+            reg_prefix = "Podstawy prawne: " + "; ".join(reg_lines) + "\n\n"
 
-    cleaned = clean_text(reg_context + (record.get("text_html") or ""))
-    if not cleaned:
+    raw_html = record.get("text_html") or ""
+    full_text = clean_text(raw_html)
+    if not full_text:
         return []
 
-    chunks = split_into_chunks(cleaned, chunk_tokens, overlap_tokens)
-    return [
-        {
-            "act_id": act_id,
-            "title": title,
-            "year": year,
-            "publisher": court_type,
-            "pos": case_number,
-            "url": record.get("source_url", ""),
-            "chunk_index": idx,
-            "total_chunks": len(chunks),
-            "text": chunk,
-            "approx_tokens": naive_token_count(chunk),
-        }
-        for idx, chunk in enumerate(chunks)
-    ]
+    # Split into named sections (thesis / ruling / justification)
+    sections = _split_saos_sections(full_text)
+
+    base_meta = {
+        "act_id": act_id,
+        "title": title,
+        "year": year,
+        "publisher": court_type,
+        "pos": case_number,
+        "url": record.get("source_url", ""),
+    }
+
+    result_chunks: list[dict] = []
+
+    # High-value sections (teza, sentencja): keep whole, prepend reg_prefix
+    for section_key in ("thesis", "ruling", "preamble"):
+        section_text = sections.get(section_key, "").strip()
+        if not section_text:
+            continue
+        combined = (reg_prefix + section_text).strip()
+        if len(combined) < 50:
+            continue
+        # Single chunk per high-value section (they're usually short)
+        for sub_idx, sub_chunk in enumerate(split_into_chunks(combined, chunk_tokens, overlap_tokens)):
+            result_chunks.append({
+                **base_meta,
+                "section_type": section_key,
+                "text": sub_chunk,
+                "approx_tokens": naive_token_count(sub_chunk),
+            })
+
+    # Justification: chunk normally, prefix with reg_context on first chunk only
+    just_text = sections.get("justification", "").strip()
+    if just_text:
+        just_chunks = split_into_chunks(reg_prefix + just_text if reg_prefix else just_text,
+                                        chunk_tokens, overlap_tokens)
+        for sub_chunk in just_chunks:
+            result_chunks.append({
+                **base_meta,
+                "section_type": "justification",
+                "text": sub_chunk,
+                "approx_tokens": naive_token_count(sub_chunk),
+            })
+
+    # If no sections were detected (very short or unstructured judgment), fall back
+    if not result_chunks:
+        fallback = split_into_chunks((reg_prefix + full_text).strip(), chunk_tokens, overlap_tokens)
+        for sub_chunk in fallback:
+            result_chunks.append({
+                **base_meta,
+                "section_type": "full",
+                "text": sub_chunk,
+                "approx_tokens": naive_token_count(sub_chunk),
+            })
+
+    # Assign sequential chunk_index across all sections
+    total = len(result_chunks)
+    for idx, chunk in enumerate(result_chunks):
+        chunk["chunk_index"] = idx
+        chunk["total_chunks"] = total
+
+    return result_chunks
 
 
 def process_file(input_path: Path, output_path: Path, chunk_tokens: int = 512, overlap_tokens: int = 64) -> tuple[int, int]:
@@ -326,10 +416,10 @@ def main() -> None:
         total_chunks += chunks
         log.info("  %s → %s (%d acts, %d chunks)", f.name, out_file.name, acts, chunks)
 
-    # Write a merged file for convenience
+    # Write a merged file for convenience (all sources: ISAP + SAOS)
     merged_path = output_dir / "chunks.jsonl"
     with merged_path.open("w", encoding="utf-8") as fout:
-        for f in sorted(output_dir.glob("chunks_acts_*.jsonl")):
+        for f in sorted(output_dir.glob("chunks_*.jsonl")):
             with f.open(encoding="utf-8") as fin:
                 for line in fin:
                     fout.write(line)

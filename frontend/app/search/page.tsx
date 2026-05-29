@@ -69,10 +69,11 @@ export default function SearchPage() {
             <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">LexCorpus</span>
           </a>
           <nav className="flex items-center gap-4 ml-4 text-sm">
-            <a href="/ask"    className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pytaj AI</a>
-            <a href="/search" className="text-blue-600 dark:text-blue-400 font-medium border-b-2 border-blue-600 dark:border-blue-400 pb-0.5">Szukaj</a>
+            <a href="/ask"     className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pytaj AI</a>
+            <a href="/search"  className="text-blue-600 dark:text-blue-400 font-medium border-b-2 border-blue-600 dark:border-blue-400 pb-0.5">Szukaj</a>
+            <a href="/compare" className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Porównaj</a>
             <a href="/history" className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Historia</a>
-            <a href="/admin"  className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Admin</a>
+            <a href="/admin"   className="text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Admin</a>
           </nav>
         </div>
       </header>

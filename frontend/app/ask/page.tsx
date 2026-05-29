@@ -59,7 +59,7 @@ export default function AskPage() {
           setStreamingText(null);
           setLoading(false);
         },
-      }, undefined, sourceType ? { source_type_filter: sourceType } : undefined);
+      }, sourceType ? { source_type_filter: sourceType } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
       setStreamingText(null);
@@ -112,6 +112,10 @@ export default function AskPage() {
           <div className="ml-auto flex gap-2">
             <a href="/search" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               Szukaj
+            </a>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <a href="/compare" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              Porównaj
             </a>
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <a href="/history" className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">

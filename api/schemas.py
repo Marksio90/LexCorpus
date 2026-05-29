@@ -29,7 +29,9 @@ class AskRequest(BaseModel):
         description="Pytanie prawne w języku polskim",
         examples=["Jakie są prawa pracownika przy wypowiedzeniu umowy o pracę?"])
     top_k: int = Field(default=5, ge=1, le=20)
-    year_filter: Optional[str] = Field(default=None, description="Filter by year, e.g. '2024'")
+    year_filter: Optional[str] = Field(default=None, description="Filter by exact year, e.g. '2024'")
+    year_from: Optional[int] = Field(default=None, description="Filter acts from this year onwards")
+    year_to: Optional[int] = Field(default=None, description="Filter acts up to this year (inclusive)")
     publisher_filter: Optional[str] = Field(default=None,
         description="Filter by publisher/court type: WDU, WMP, ADMINISTRATIVE, SUPREME, CONSTITUTIONAL_TRIBUNAL, COMMON")
     source_type_filter: Optional[SourceType] = Field(default=None,
@@ -42,6 +44,8 @@ class SearchRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=2000)
     top_k: int = Field(default=10, ge=1, le=50)
     year_filter: Optional[str] = Field(default=None)
+    year_from: Optional[int] = Field(default=None)
+    year_to: Optional[int] = Field(default=None)
     publisher_filter: Optional[str] = Field(default=None)
     source_type_filter: Optional[SourceType] = Field(default=None)
 
@@ -81,6 +85,26 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     embedding_model_loaded: bool
     collection_count: Optional[int] = None
+
+
+class SourceBreakdown(BaseModel):
+    legislation: int = 0
+    judgment_nsa: int = 0
+    judgment_sn: int = 0
+    judgment_tk: int = 0
+    judgment_common: int = 0
+    judgment_kio: int = 0
+    total: int = 0
+
+
+class StatsResponse(BaseModel):
+    by_source: SourceBreakdown
+    total_chunks: int
+    collection_name: str
+    embedding_model: str
+    rerank_enabled: bool
+    expand_enabled: bool
+    last_ingest: Optional[str] = None   # ISO datetime of last ingest sentinel mtime
 
 
 class ErrorResponse(BaseModel):

@@ -61,6 +61,26 @@ export interface HealthResponse {
   collection_count: number | null;
 }
 
+export interface SourceBreakdown {
+  legislation: number;
+  judgment_nsa: number;
+  judgment_sn: number;
+  judgment_tk: number;
+  judgment_common: number;
+  judgment_kio: number;
+  total: number;
+}
+
+export interface StatsResponse {
+  by_source: SourceBreakdown;
+  total_chunks: number;
+  collection_name: string;
+  embedding_model: string;
+  rerank_enabled: boolean;
+  expand_enabled: boolean;
+  last_ingest: string | null;
+}
+
 export interface HistoryEntry {
   id: string;
   timestamp: string;

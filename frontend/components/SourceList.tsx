@@ -17,7 +17,7 @@ const SOURCE_TYPE_LABELS: Record<SourceType, { label: string; color: string }> =
   unknown:            { label: "Źródło",    color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" },
 };
 
-function SourceTypeBadge({ type }: { type: SourceType }) {
+export function SourceTypeBadge({ type }: { type: SourceType }) {
   const { label, color } = SOURCE_TYPE_LABELS[type] ?? SOURCE_TYPE_LABELS.unknown;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${color}`}>
@@ -27,7 +27,6 @@ function SourceTypeBadge({ type }: { type: SourceType }) {
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  // Cross-encoder scores are raw logits (unbounded). Normalize via sigmoid for display.
   const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
   const normalized = score > 1 || score < 0 ? sigmoid(score) : score;
   const pct = Math.round(normalized * 100);
@@ -45,35 +44,54 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function buildIsapUrl(source: SourceDocument): string {
-  // Prefer the ELI-based URL from the API (e.g. https://api.sejm.gov.pl/eli/acts/DU/2024/1984/text.html)
-  // Convert to the human-readable ISAP page URL when possible.
-  if (source.url && source.url.includes("sejm.gov.pl")) {
-    // Strip /text.html suffix to get a cleaner link, or use ISAP search
-    const eliMatch = source.url.match(/\/eli\/acts\/([A-Z]+)\/(\d+)\/(\d+)/);
-    if (eliMatch) {
-      const [, pub, year, pos] = eliMatch;
-      return `https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WD${pub === "DU" ? "U" : "MP"}${year}${String(pos).padStart(7, "0")}`;
+/** Returns { url, label } for the external link button, or null if no link available. */
+export function buildExternalLink(source: SourceDocument): { url: string; label: string } | null {
+  if (source.source_type === "legislation" || source.source_type === "unknown") {
+    // Try ELI-based ISAP URL
+    if (source.url && source.url.includes("sejm.gov.pl")) {
+      const eliMatch = source.url.match(/\/eli\/acts\/([A-Z]+)\/(\d+)\/(\d+)/);
+      if (eliMatch) {
+        const [, pub, year, pos] = eliMatch;
+        const isapId = `WD${pub === "DU" ? "U" : "MP"}${year}${String(pos).padStart(7, "0")}`;
+        return {
+          url: `https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=${isapId}`,
+          label: "ISAP ↗",
+        };
+      }
+      return { url: source.url, label: "ISAP ↗" };
     }
-    return source.url;
+    if (source.act_id) {
+      return {
+        url: `https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=${encodeURIComponent(source.act_id)}`,
+        label: "ISAP ↗",
+      };
+    }
+  } else {
+    // SAOS judgment — source.url is set by fetch_saos.py directly to the SAOS page
+    if (source.url) {
+      return { url: source.url, label: "SAOS ↗" };
+    }
+    // Fallback: construct from act_id (format: saos_12345 or numeric id)
+    const idMatch = source.act_id.match(/(\d+)$/);
+    if (idMatch) {
+      return {
+        url: `https://www.saos.org.pl/judgments/${idMatch[1]}`,
+        label: "SAOS ↗",
+      };
+    }
   }
-  if (source.act_id) {
-    return `https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=${encodeURIComponent(source.act_id)}`;
-  }
-  return "";
+  return null;
 }
 
 function SourceItem({ source, index }: { source: SourceDocument; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const num = index + 1;
-  const isapUrl = buildIsapUrl(source);
+  const externalLink = buildExternalLink(source);
 
   const publisherLabel =
-    source.publisher === "WDU"
-      ? "Dz.U."
-      : source.publisher === "WMP"
-      ? "M.P."
-      : source.publisher;
+    source.publisher === "WDU" ? "Dz.U."
+    : source.publisher === "WMP" ? "M.P."
+    : source.publisher;
 
   return (
     <div
@@ -84,7 +102,7 @@ function SourceItem({ source, index }: { source: SourceDocument; index: number }
         className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Index badge — matches inline [N] citation style */}
+        {/* Index badge */}
         <span className="flex-shrink-0 w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center mt-0.5">
           {num}
         </span>
@@ -110,17 +128,17 @@ function SourceItem({ source, index }: { source: SourceDocument; index: number }
           )}
         </div>
 
-        {/* Controls */}
+        {/* External link + expand chevron */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {isapUrl && (
+          {externalLink && (
             <a
-              href={isapUrl}
+              href={externalLink.url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap font-medium"
             >
-              ISAP&nbsp;↗
+              {externalLink.label}
             </a>
           )}
           <svg
@@ -137,9 +155,21 @@ function SourceItem({ source, index }: { source: SourceDocument; index: number }
       {/* Expanded text snippet */}
       {expanded && source.text && (
         <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-3 bg-slate-50 dark:bg-slate-800/50">
-          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
-            Fragment tekstu
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+              Fragment tekstu
+            </p>
+            {externalLink && (
+              <a
+                href={externalLink.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                Otwórz pełny dokument {externalLink.label}
+              </a>
+            )}
+          </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
             {source.text}
           </p>
