@@ -102,6 +102,38 @@ chmod +x deploy.sh && sudo ./deploy.sh
 
 Uses `docker-compose.yml` + `docker-compose.prod.yml` overlay. Nginx terminates SSL.
 
+## Fine-tuning (QLoRA na Bielik-7B)
+
+### Krok 1 — generowanie danych syntetycznych (CPU, wymaga OPENAI_API_KEY)
+```bash
+python scripts/generate_training_data.py \
+    --input data/processed/chunks.jsonl \
+    --output data/dataset/synthetic \
+    --max-chunks 5000 \
+    --questions-per-chunk 2
+# Koszt: ~5000 * 2 * $0.00015 ≈ $1.50 przy gpt-4o-mini
+# Wynik: data/dataset/synthetic/train.jsonl (chat-format, ~10k rekordów)
+```
+
+### Krok 2 — trening (GPU, min. 16GB VRAM)
+```bash
+python training/train.py --data data/dataset/synthetic/train.jsonl
+# lub przez Docker (GPU):
+docker compose run --rm train
+```
+
+### Krok 3 — deployment
+```bash
+# Ustaw LOCAL_MODEL_PATH w .env na katalog z wytrenowanym modelem:
+LOCAL_MODEL_PATH=./output/lexcorpus-merged
+```
+
+Pliki:
+- `scripts/generate_training_data.py` — syntetic data distillation (GPT-4o-mini → chat pairs)
+- `training/train.py` — QLoRA fine-tuning, obsługuje chat-format i legacy instruction-format
+- `training/config.yaml` — hiperparametry (LoRA r=16, 4-bit NF4, Bielik-7B)
+- `Dockerfile.train` — kontener CUDA 12.1 do trenowania
+
 ## Weekly SAOS sync
 
 ```bash

@@ -186,6 +186,33 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── Training (GPU required) ────────────────────────────────────────────────
+  # Run manually on a GPU machine:
+  #   docker compose run --rm train
+  # Or just generate synthetic data (no GPU needed):
+  #   docker compose run --rm train python scripts/generate_training_data.py --max-chunks 5000
+  train:
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    container_name: lexcorpus-train
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+    profiles: ["train"]
+    restart: "no"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - MAX_CHUNKS=${MAX_CHUNKS:-5000}
+      - QUESTIONS_PER_CHUNK=${QUESTIONS_PER_CHUNK:-2}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   # Run manually to sync new SAOS judgments:
   #   docker compose run --rm sync-saos
   sync-saos:

@@ -4,22 +4,29 @@ train.py — QLoRA fine-tuning of Bielik-7B-Instruct on Polish legal data.
 Uses PEFT (LoRA) + bitsandbytes 4-bit quantization + HuggingFace Trainer.
 Configuration is loaded from training/config.yaml.
 
+Supports two dataset formats:
+  1. Chat format (from generate_training_data.py):
+       {"messages": [{"role": "system", ...}, {"role": "user", ...}, {"role": "assistant", ...}]}
+  2. Legacy instruction format (from build_dataset.py):
+       {"instruction": "...", "input": "...", "output": "..."}
+
 Usage:
     python training/train.py
     python training/train.py --config training/config.yaml
-    python training/train.py --config training/config.yaml --dry-run
+    python training/train.py --data data/dataset/synthetic/train.jsonl --dry-run
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
 
 import torch
 import yaml
-from datasets import DatasetDict, load_from_disk
+from datasets import Dataset, DatasetDict, load_from_disk
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
@@ -39,6 +46,34 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = Path(__file__).parent / "config.yaml"
+
+
+def load_jsonl_dataset(path: Path, val_ratio: float = 0.1) -> DatasetDict:
+    """Load a JSONL file (chat or instruction format) and split into train/val."""
+    records = []
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+
+    # Detect format
+    if records and "messages" in records[0]:
+        log.info("Detected chat format (%d records)", len(records))
+    else:
+        log.info("Detected instruction format (%d records)", len(records))
+
+    import random
+    random.Random(42).shuffle(records)
+    n = len(records)
+    val_end = int(n * val_ratio)
+    return DatasetDict({
+        "train":      Dataset.from_list(records[val_end:]),
+        "validation": Dataset.from_list(records[:val_end]),
+    })
 
 
 def load_config(path: Path) -> dict:
@@ -126,7 +161,7 @@ def apply_lora(model, cfg: dict):
 
 
 def format_prompt(example: dict, template: str) -> str:
-    """Format an instruction-tuning record into a single prompt string."""
+    """Format a legacy instruction-tuning record into a prompt string."""
     return template.format(
         instruction=example.get("instruction", ""),
         input=example.get("input", ""),
@@ -134,28 +169,52 @@ def format_prompt(example: dict, template: str) -> str:
     )
 
 
+def apply_chat_template(example: dict, tokenizer) -> str:
+    """Format a chat-format record using the tokenizer's chat template."""
+    messages = example.get("messages", [])
+    if hasattr(tokenizer, "apply_chat_template"):
+        try:
+            return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+        except Exception:
+            pass
+    # Fallback: manual format
+    parts = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "system":
+            parts.append(f"### System:\n{content}")
+        elif role == "user":
+            parts.append(f"### Użytkownik:\n{content}")
+        elif role == "assistant":
+            parts.append(f"### Asystent:\n{content}")
+    return "\n\n".join(parts)
+
+
 def tokenize_dataset(dataset: DatasetDict, tokenizer, cfg: dict) -> DatasetDict:
-    """Tokenize all splits of the dataset."""
+    """Tokenize all splits; supports both chat-format and legacy instruction format."""
     max_seq_len = cfg["training"]["max_seq_length"]
     template = cfg["data"]["prompt_template"]
+    is_chat = "messages" in dataset["train"].column_names
 
     def tokenize_fn(examples):
-        # Format each example into a full prompt
-        texts = [
-            format_prompt(
-                {
-                    "instruction": instr,
-                    "input": inp,
-                    "output": out,
-                },
-                template,
-            )
-            for instr, inp, out in zip(
-                examples["instruction"],
-                examples["input"],
-                examples["output"],
-            )
-        ]
+        if is_chat:
+            texts = [
+                apply_chat_template({"messages": msgs}, tokenizer)
+                for msgs in examples["messages"]
+            ]
+        else:
+            texts = [
+                format_prompt(
+                    {"instruction": instr, "input": inp, "output": out},
+                    template,
+                )
+                for instr, inp, out in zip(
+                    examples["instruction"],
+                    examples["input"],
+                    examples["output"],
+                )
+            ]
 
         tokenized = tokenizer(
             texts,
@@ -164,11 +223,10 @@ def tokenize_dataset(dataset: DatasetDict, tokenizer, cfg: dict) -> DatasetDict:
             padding=False,
             return_tensors=None,
         )
-        # For causal LM, labels = input_ids (shifted inside the model)
         tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
 
-    log.info("Tokenizing dataset …")
+    log.info("Tokenizing dataset (format: %s) …", "chat" if is_chat else "instruction")
     tokenized = dataset.map(
         tokenize_fn,
         batched=True,
@@ -226,17 +284,12 @@ def merge_and_save(model, tokenizer, cfg: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="QLoRA fine-tuning for LexCorpus.")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=DEFAULT_CONFIG,
-        help="Path to training config YAML",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Load model and dataset but skip actual training (for debugging)",
-    )
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--data",   type=Path, default=None,
+                        help="Path to JSONL training file (chat or instruction format). "
+                             "Overrides config data.dataset_path.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Load model and dataset but skip actual training")
     args = parser.parse_args()
 
     if not args.config.exists():
@@ -250,10 +303,13 @@ def main() -> None:
     log.info("Base model: %s", cfg["model"]["base_model_id"])
     log.info("LoRA r=%d, alpha=%d", cfg["lora"]["r"], cfg["lora"]["lora_alpha"])
 
-    # Load dataset
-    dataset_path = cfg["data"]["dataset_path"]
-    log.info("Loading dataset from %s …", dataset_path)
-    dataset = load_from_disk(dataset_path)
+    # Load dataset — JSONL (chat/instruction) or HF Dataset on disk
+    data_path = args.data or Path(cfg["data"]["dataset_path"])
+    log.info("Loading dataset from %s …", data_path)
+    if str(data_path).endswith(".jsonl"):
+        dataset = load_jsonl_dataset(data_path)
+    else:
+        dataset = load_from_disk(str(data_path))
 
     # Subsample if configured
     max_train = cfg["data"].get("max_samples_train")
