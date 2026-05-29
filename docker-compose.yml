@@ -142,6 +142,9 @@ services:
       - RERANK_ENABLED=${RERANK_ENABLED:-true}
       - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
     depends_on:
       qdrant:
         condition: service_healthy

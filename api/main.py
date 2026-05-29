@@ -33,6 +33,8 @@ from typing import AsyncGenerator
 
 from dotenv import load_dotenv
 import json
+import time
+from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -59,6 +61,32 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-la
 RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
 EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+
+# ── Simple in-process rate limiter ───────────────────────────────────────────
+# Limits expensive /ask and /ask/stream endpoints per IP.
+_rate_buckets: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))   # max requests
+RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))   # per N seconds
+
+def _check_rate_limit(ip: str) -> None:
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+    bucket = _rate_buckets[ip]
+    # Drop old entries
+    _rate_buckets[ip] = [t for t in bucket if t > window_start]
+    if len(_rate_buckets[ip]) >= RATE_LIMIT_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Zbyt wiele zapytań. Limit: {RATE_LIMIT_REQUESTS} na {RATE_LIMIT_WINDOW}s.",
+        )
+    _rate_buckets[ip].append(now)
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -175,10 +203,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -337,9 +365,10 @@ def _chunk_to_source(chunk) -> SourceDocument:
 
 
 @app.post("/search", response_model=SearchResponse)
-async def search(request: SearchRequest) -> SearchResponse:
+async def search(request: SearchRequest, req: Request) -> SearchResponse:
     """Pure semantic search — returns relevant chunks without LLM generation.
     Useful for lawyers who want to browse source documents directly."""
+    _check_rate_limit(_client_ip(req))
     retriever = _init_retriever()
     publisher_filter = request.publisher_filter
     if not publisher_filter and request.source_type_filter:
@@ -363,7 +392,7 @@ async def search(request: SearchRequest) -> SearchResponse:
 
 
 @app.post("/ask", response_model=AskResponse)
-async def ask(request: AskRequest) -> AskResponse:
+async def ask(request: AskRequest, req: Request) -> AskResponse:
     """
     Answer a Polish legal question.
 
@@ -371,6 +400,7 @@ async def ask(request: AskRequest) -> AskResponse:
     then generates an answer using the local fine-tuned model or Claude API.
     Returns the answer along with source citations.
     """
+    _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty")
@@ -422,7 +452,7 @@ async def ask(request: AskRequest) -> AskResponse:
 
 
 @app.post("/ask/stream")
-async def ask_stream(request: AskRequest) -> StreamingResponse:
+async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
     """
     Streaming version of /ask using Server-Sent Events.
 
@@ -432,6 +462,7 @@ async def ask_stream(request: AskRequest) -> StreamingResponse:
       data: {"type": "done",    "model_used": "..."}
       data: {"type": "error",   "detail": "..."}
     """
+    _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty")
@@ -448,11 +479,17 @@ async def ask_stream(request: AskRequest) -> StreamingResponse:
         if request.use_rag:
             try:
                 retriever = _init_retriever()
+                publisher_filter = request.publisher_filter
+                if not publisher_filter and request.source_type_filter:
+                    reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
+                               "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
+                               "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER"}
+                    publisher_filter = reverse.get(request.source_type_filter)
                 chunks = retriever.retrieve(
                     query=question,
                     top_k=request.top_k,
                     year_filter=request.year_filter,
-                    publisher_filter=request.publisher_filter,
+                    publisher_filter=publisher_filter,
                 )
                 context_str = retriever.format_context(chunks, max_chars=3500)
                 retrieved_chunks = chunks
@@ -460,22 +497,7 @@ async def ask_stream(request: AskRequest) -> StreamingResponse:
             except Exception as exc:
                 log.warning("RAG retrieval failed in stream: %s", exc)
 
-        sources = [
-            SourceDocument(
-                score=chunk.score,
-                act_id=chunk.act_id,
-                title=chunk.title,
-                year=chunk.year,
-                publisher=chunk.publisher,
-                pos=chunk.pos,
-                url=chunk.url,
-                chunk_index=chunk.chunk_index,
-                total_chunks=chunk.total_chunks,
-                text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
-                citation=chunk.citation(),
-            )
-            for chunk in retrieved_chunks
-        ]
+        sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
 
         # Emit sources immediately so the UI can show them while text streams
         yield sse({"type": "sources", "sources": [s.model_dump() for s in sources], "retrieval_used": retrieval_used})
