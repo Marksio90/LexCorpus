@@ -43,6 +43,10 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
+  // Newsletter
+  newsletterEnabled    Boolean   @default(true)
+  newsletterLastSentAt DateTime?
+
   // Subscription tier
   tier                 String    @default("free")   // "free" | "pro" | "kancelaria"
   tierExpiresAt        DateTime?

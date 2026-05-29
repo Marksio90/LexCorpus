@@ -81,6 +81,25 @@ def _run_cmd(args: list[str], label: str, lines: list[str]) -> bool:
         return False
 
 
+def _trigger_newsletter() -> None:
+    """Call Next.js newsletter send endpoint (admin trigger via internal secret)."""
+    base_url = os.environ.get("NEXTAUTH_URL", "http://frontend:3000")
+    secret   = os.environ.get("NEWSLETTER_INTERNAL_SECRET", "")
+    try:
+        import urllib.request, json as _json
+        req = urllib.request.Request(
+            f"{base_url}/api/newsletter/send",
+            data=b"{}",
+            headers={"Content-Type": "application/json", "X-Internal-Secret": secret},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = _json.loads(resp.read())
+            log.info("[newsletter] sent=%s skipped=%s", body.get("sent"), body.get("skipped"))
+    except Exception as exc:
+        log.error("[newsletter] trigger failed: %s", exc)
+
+
 def run_sync() -> None:
     """Full sync pipeline: fetch → preprocess → ingest (append mode)."""
     with _lock:
@@ -220,6 +239,21 @@ def start_scheduler() -> None:
 
     scheduler = BackgroundScheduler(timezone="Europe/Warsaw")
     job = scheduler.add_job(run_sync, trigger, id="saos_sync", replace_existing=True)
+
+    # Newsletter: every Monday at 08:00 Warsaw time
+    newsletter_cron = os.environ.get("NEWSLETTER_CRON", "0 8 * * 1")
+    n_parts = newsletter_cron.split()
+    if len(n_parts) == 5:
+        n_minute, n_hour, n_day, n_month, n_dow = n_parts
+        scheduler.add_job(
+            _trigger_newsletter,
+            CronTrigger(minute=n_minute, hour=n_hour, day=n_day, month=n_month,
+                        day_of_week=n_dow, timezone="Europe/Warsaw"),
+            id="newsletter",
+            replace_existing=True,
+        )
+        log.info("[sync] Newsletter cron='%s' scheduled", newsletter_cron)
+
     scheduler.start()
 
     next_run = job.next_run_time
