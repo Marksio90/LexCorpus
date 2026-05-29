@@ -259,10 +259,11 @@ def _init_openai():
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize resources at startup."""
     log.info("LexCorpus API starting …")
+    log.info("Warming up retriever at startup …")
     try:
         _init_retriever()
     except Exception as exc:
-        log.warning("Retriever initialization failed (will retry on first request): %s", exc)
+        log.warning("Retriever warmup failed (will retry on first request): %s", exc)
 
     _init_local_model()
     _init_openai()
@@ -607,7 +608,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
                 year_to=request.year_to,
                 publisher_filter=publisher_filter,
             )
-            context_str = retriever.format_context(chunks, max_chars=3500)
+            context_str = retriever.format_context(chunks, max_chars=8000)
             retrieved_chunks = chunks
             retrieval_used = True
             log.info("Retrieved %d chunks (top score: %.4f)", len(chunks), chunks[0].score if chunks else 0.0)
@@ -675,7 +676,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                     year_to=request.year_to,
                     publisher_filter=publisher_filter,
                 )
-                context_str = retriever.format_context(chunks, max_chars=3500)
+                context_str = retriever.format_context(chunks, max_chars=8000)
                 retrieved_chunks = chunks
                 retrieval_used = True
             except Exception as exc:
@@ -807,7 +808,7 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
     if retriever.use_rerank and all_chunks:
         all_chunks = retriever._rerank(question, all_chunks)
 
-    context_str = retriever.format_context(all_chunks[:8], max_chars=3500)
+    context_str = retriever.format_context(all_chunks[:8], max_chars=8000)
     prompt      = build_prompt(question, context_str)
     answer, model_used = generate_answer(prompt)
     sources = [_chunk_to_source(c) for c in all_chunks[:8]]

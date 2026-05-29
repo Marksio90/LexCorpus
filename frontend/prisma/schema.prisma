@@ -83,6 +83,10 @@ model LegalChange {
   url         String?
 
   alerts LegalAlert[]
+
+  @@index([actId])
+  @@index([detectedAt(sort: Desc)])
+  @@index([sourceType])
 }
 
 model LegalAlert {
@@ -124,6 +128,7 @@ model QueryLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ── API tokens (plan kancelaria) ─────────────────────────────────────────────
