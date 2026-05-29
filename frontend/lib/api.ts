@@ -1,11 +1,11 @@
-import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
+import type { AskRequest, AskResponse, AnswerConfidence, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface StreamCallbacks {
   onSources: (sources: SourceDocument[], retrievalUsed: boolean) => void;
   onDelta: (text: string) => void;
-  onDone: (modelUsed: string) => void;
+  onDone: (modelUsed: string, confidence?: AnswerConfidence) => void;
   onError: (detail: string) => void;
 }
 
@@ -60,7 +60,7 @@ export async function askQuestionStream(
         } else if (event.type === "delta") {
           callbacks.onDelta(event.text);
         } else if (event.type === "done") {
-          callbacks.onDone(event.model_used);
+          callbacks.onDone(event.model_used, event.confidence);
         } else if (event.type === "error") {
           callbacks.onError(event.detail);
         }

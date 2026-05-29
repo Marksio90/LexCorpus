@@ -162,6 +162,18 @@ def run_sync() -> None:
             except Exception:
                 pass
             lines.append("Sync complete ✓")
+
+            # Step 4: detect changes and match with user query history
+            db_path = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+            if chunk_file.exists():
+                _run_cmd(
+                    [python, "scripts/detect_changes.py",
+                     "--new-chunks", str(chunk_file),
+                     "--db", db_path,
+                     "--threshold", "0.72"],
+                    "detect-changes",
+                    lines,
+                )
         else:
             lines.append("Ingest failed")
 

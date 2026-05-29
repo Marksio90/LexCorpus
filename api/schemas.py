@@ -65,12 +65,22 @@ class SourceDocument(BaseModel):
     citation: str
 
 
+class AnswerConfidence(BaseModel):
+    """Pewność odpowiedzi na podstawie jakości retrieval."""
+    score: float          # 0.0 – 1.0
+    level: str            # "wysoka" | "średnia" | "niska"
+    n_sources: int        # liczba źródeł które wspierają odpowiedź
+    top_source_score: float
+    explanation: str      # 1 zdanie po polsku
+
+
 class AskResponse(BaseModel):
     question: str
     answer: str
     sources: list[SourceDocument] = Field(default_factory=list)
     model_used: str
     retrieval_used: bool
+    confidence: Optional[AnswerConfidence] = None
 
 
 class SearchResponse(BaseModel):

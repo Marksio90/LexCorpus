@@ -1,9 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import type { AskResponse, SourceDocument } from "@/lib/types";
+import type { AskResponse, AnswerConfidence, SourceDocument } from "@/lib/types";
 import { SourceList, SourceTypeBadge, buildExternalLink } from "./SourceList";
 import { PdfDownloadButton } from "./PdfDownloadButton";
+
+// ── Confidence badge ──────────────────────────────────────────────────────────
+
+function ConfidenceBadge({ confidence }: { confidence: AnswerConfidence }) {
+  const [open, setOpen] = useState(false);
+  const colors = {
+    wysoka:  "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800",
+    średnia: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800",
+    niska:   "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
+  };
+  const icons = { wysoka: "●●●", średnia: "●●○", niska: "●○○" };
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${colors[confidence.level]}`}
+        title="Kliknij po szczegóły"
+      >
+        <span className="tracking-widest text-[10px]">{icons[confidence.level]}</span>
+        Pewność: {confidence.level}
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-2 z-20 w-72 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg p-4 text-xs space-y-2">
+          <p className="font-semibold text-slate-800 dark:text-slate-200">Jak pewna jest odpowiedź?</p>
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{confidence.explanation}</p>
+          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-700">
+            <div>
+              <p className="text-slate-400 uppercase tracking-wide text-[10px]">Łączny score</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200">{Math.round(confidence.score * 100)}%</p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wide text-[10px]">Najlepsze źródło</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200">{Math.round(confidence.top_source_score * 100)}%</p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wide text-[10px]">Liczba źródeł</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200">{confidence.n_sources}</p>
+            </div>
+          </div>
+          <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Zamknij</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface AnswerCardProps {
   response: AskResponse;
@@ -237,7 +283,7 @@ function AnswerText({ text, sources }: { text: string; sources: SourceDocument[]
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
-  const { answer, model_used, retrieval_used, sources, question } = response;
+  const { answer, model_used, retrieval_used, sources, question, confidence } = response;
 
   return (
     <div className="space-y-4">
@@ -267,6 +313,7 @@ export function AnswerCard({ response, streaming = false }: AnswerCardProps) {
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">
               {model_used}
             </span>
+            {confidence && !streaming && <ConfidenceBadge confidence={confidence} />}
             {!streaming && (
               <>
                 <CopyButton response={response} />

@@ -36,12 +36,21 @@ export interface SearchResponse {
   total: number;
 }
 
+export interface AnswerConfidence {
+  score:            number;
+  level:            "wysoka" | "średnia" | "niska";
+  n_sources:        number;
+  top_source_score: number;
+  explanation:      string;
+}
+
 export interface AskResponse {
-  question: string;
-  answer: string;
-  sources: SourceDocument[];
-  model_used: string;
+  question:       string;
+  answer:         string;
+  sources:        SourceDocument[];
+  model_used:     string;
   retrieval_used: boolean;
+  confidence?:    AnswerConfidence;
 }
 
 export interface AskRequest {

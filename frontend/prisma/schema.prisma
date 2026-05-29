@@ -56,7 +56,41 @@ model User {
   sessions   Session[]
   usageLogs  UsageLog[]
   queryLogs  QueryLog[]
-  apiTokens  ApiToken[]
+  apiTokens        ApiToken[]
+  alerts           LegalAlert[]
+  privateDocuments PrivateDocument[]
+}
+
+// ── Legal Diff alerts ─────────────────────────────────────────────────────────
+
+model LegalChange {
+  id          String   @id @default(cuid())
+  detectedAt  DateTime @default(now())
+  actId       String
+  title       String
+  sourceType  String
+  year        Int?
+  summary     String   // 1-2 zdania o zmianie (generowane przez LLM)
+  chunkText   String   // fragment nowego/zmienionego przepisu
+  url         String?
+
+  alerts LegalAlert[]
+}
+
+model LegalAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  changeId    String
+  similarity  Float     // cosine similarity pytania użytkownika do zmiany
+  question    String    // pytanie które wygenerowało subskrypcję
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  change LegalChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, changeId])
+  @@index([userId, readAt])
 }
 
 model VerificationToken {
@@ -96,6 +130,25 @@ model ApiToken {
   lastUsedAt  DateTime?
   revokedAt   DateTime?
   requestCount Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ── Private documents (per-user RAG) ─────────────────────────────────────────
+
+model PrivateDocument {
+  id           String   @id @default(cuid())
+  userId       String
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  status       String   @default("processing") // "processing"|"ready"|"error"
+  errorMsg     String?
+  chunkCount   Int      @default(0)
+  uploadedAt   DateTime @default(now())
+  processedAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
