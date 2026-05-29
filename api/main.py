@@ -42,6 +42,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorResponse,
                          HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
                          SourceDocument, StatsResponse, publisher_to_source_type)
+from api.result_cache import get_cache
 
 load_dotenv()
 
