@@ -129,42 +129,28 @@ def _client_ip(request: Request) -> str:
 
 # ── API token auth (plan kancelaria) ─────────────────────────────────────────
 import hashlib
-import sqlite3
-import threading
-from queue import Queue, Empty
 
-_DB_PATH = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+_DATABASE_URL = os.getenv("DATABASE_URL", "")
+_pg_pool = None
 
-class _SqlitePool:
-    """Thread-safe SQLite connection pool to avoid per-request connect overhead."""
-    def __init__(self, db_path: str, size: int = 8) -> None:
-        self._pool: Queue = Queue(maxsize=size)
-        for _ in range(size):
-            conn = sqlite3.connect(db_path, timeout=10, check_same_thread=False)
-            conn.execute("PRAGMA journal_mode=WAL")
-            self._pool.put(conn)
 
-    def get(self) -> sqlite3.Connection:
-        try:
-            return self._pool.get(timeout=5)
-        except Empty:
-            raise RuntimeError("SQLite pool exhausted")
+async def _get_pg_pool():
+    global _pg_pool
+    if _pg_pool is not None:
+        return _pg_pool
+    if not _DATABASE_URL:
+        return None
+    try:
+        import asyncpg
+        _pg_pool = await asyncpg.create_pool(_DATABASE_URL, min_size=2, max_size=10, command_timeout=5)
+        log.info("Połączono z PostgreSQL")
+    except Exception as exc:
+        log.warning("PostgreSQL niedostępny, weryfikacja tokenów wyłączona: %s", exc)
+        _pg_pool = None
+    return _pg_pool
 
-    def put(self, conn: sqlite3.Connection) -> None:
-        self._pool.put(conn)
 
-_db_pool: _SqlitePool | None = None
-_db_pool_lock = threading.Lock()
-
-def _get_db_pool() -> _SqlitePool:
-    global _db_pool
-    if _db_pool is None:
-        with _db_pool_lock:
-            if _db_pool is None:
-                _db_pool = _SqlitePool(_DB_PATH)
-    return _db_pool
-
-def _verify_api_token(request: Request) -> str | None:
+async def _verify_api_token(request: Request) -> str | None:
     """
     Sprawdza Bearer token z nagłówka Authorization.
     Zwraca userId jeśli token jest ważny, None jeśli brak nagłówka.
@@ -175,28 +161,26 @@ def _verify_api_token(request: Request) -> str | None:
         return None
     plain = auth[len("Bearer "):]
     token_hash = hashlib.sha256(plain.encode()).hexdigest()
-    pool = _get_db_pool()
-    conn = pool.get()
-    row = None
+    pool = await _get_pg_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Baza danych niedostępna.")
     try:
-        row = conn.execute(
-            "SELECT id, userId FROM ApiToken WHERE tokenHash=? AND revokedAt IS NULL",
-            (token_hash,),
-        ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE ApiToken SET lastUsedAt=datetime('now'), requestCount=requestCount+1 WHERE id=?",
-                (row[0],),
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT id, "userId" FROM "ApiToken" WHERE "tokenHash"=$1 AND "revokedAt" IS NULL',
+                token_hash,
             )
-            conn.commit()
-    except Exception as e:
-        log.warning("Błąd weryfikacji tokenu API: %s", e)
+            if row:
+                await conn.execute(
+                    'UPDATE "ApiToken" SET "lastUsedAt"=NOW(), "requestCount"="requestCount"+1 WHERE id=$1',
+                    row["id"],
+                )
+    except Exception as exc:
+        log.warning("Błąd weryfikacji tokenu API: %s", exc)
         row = None
-    finally:
-        pool.put(conn)
     if row is None and plain:
         raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
-    return row[1] if row else None
+    return row["userId"] if row else None
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -575,7 +559,7 @@ def _chunk_to_source(chunk) -> SourceDocument:
 async def search(request: SearchRequest, req: Request) -> SearchResponse:
     """Pure semantic search — returns relevant chunks without LLM generation.
     Useful for lawyers who want to browse source documents directly."""
-    if not _verify_api_token(req):
+    if not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     retriever = _init_retriever()
     publisher_filter = request.publisher_filter
@@ -614,7 +598,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
     Returns the answer along with source citations.
     Accepts Bearer token (plan kancelaria) or falls back to IP rate-limit.
     """
-    if not _verify_api_token(req):
+    if not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
@@ -717,7 +701,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
       data: {"type": "done",    "model_used": "..."}
       data: {"type": "error",   "detail": "..."}
     """
-    if not _verify_api_token(req):
+    if not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
@@ -825,7 +809,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
 @app.delete("/private-collection/{user_id}")
 async def delete_private_collection(user_id: str, req: Request) -> dict:
     """Usuwa prywatną kolekcję Qdrant użytkownika."""
-    token_owner = _verify_api_token(req)
+    token_owner = await _verify_api_token(req)
     if not token_owner:
         raise HTTPException(status_code=401, detail="Wymagany token Bearer.")
     if token_owner != user_id:
@@ -846,7 +830,7 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
     RAG po prywatnej kolekcji dokumentów + publicznym korpusie.
     Wymaga Bearer tokenu lub sesji z planem Pro/Kancelaria.
     """
-    user_id = _verify_api_token(req)
+    user_id = await _verify_api_token(req)
     if not user_id:
         raise HTTPException(status_code=401, detail="Wymagany token API lub sesja.")
 

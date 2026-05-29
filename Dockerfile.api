@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir \
     pydantic \
     pymupdf \
     "apscheduler>=3.10" \
-    redis
+    redis \
+    asyncpg
 
 COPY . .
 

@@ -195,6 +195,22 @@ services:
         fi
       "
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexcorpus-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-lexcorpus}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${POSTGRES_DB:-lexcorpus}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lexcorpus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: lexcorpus-redis
@@ -227,6 +243,7 @@ services:
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
       - SYNC_ENABLED=${SYNC_ENABLED:-true}
       - SYNC_CRON=${SYNC_CRON:-0 3 * * 0}
       - SYNC_SINCE_DAYS=${SYNC_SINCE_DAYS:-8}
@@ -236,6 +253,8 @@ services:
       qdrant:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       ingest:
         condition: service_completed_successfully
@@ -269,9 +288,11 @@ services:
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
       - STRIPE_PRICE_KANCELARIA=${STRIPE_PRICE_KANCELARIA:-}
-      - DATABASE_PATH=${DATABASE_PATH:-/app/prisma/prod.db}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
     depends_on:
       api:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
@@ -329,4 +350,5 @@ services:
       qdrant:
         condition: service_healthy
 
-volumes: {}
+volumes:
+  postgres_data:
