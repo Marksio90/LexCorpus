@@ -40,7 +40,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.schemas import (AskRequest, AskResponse, ErrorResponse, HealthResponse,
-                         SearchRequest, SearchResponse, SourceDocument, publisher_to_source_type)
+                         SearchRequest, SearchResponse, SourceBreakdown, SourceDocument,
+                         StatsResponse, publisher_to_source_type)
 
 load_dotenv()
 
@@ -344,6 +345,63 @@ async def health() -> HealthResponse:
         model_loaded=model_loaded,
         embedding_model_loaded=embedding_loaded,
         collection_count=collection_count,
+    )
+
+
+@app.get("/stats", response_model=StatsResponse)
+async def stats() -> StatsResponse:
+    """Collection statistics broken down by source type."""
+    from datetime import datetime, timezone
+    from qdrant_client.http import models as qmodels
+
+    retriever = _init_retriever()
+    client = retriever.client
+
+    publisher_map = {
+        "legislation":    "WDU",
+        "judgment_nsa":   "ADMINISTRATIVE",
+        "judgment_sn":    "SUPREME",
+        "judgment_tk":    "CONSTITUTIONAL_TRIBUNAL",
+        "judgment_common": "COMMON",
+        "judgment_kio":   "NATIONAL_APPEAL_CHAMBER",
+    }
+
+    counts: dict[str, int] = {}
+    for source_type, publisher in publisher_map.items():
+        try:
+            result = client.count(
+                collection_name=QDRANT_COLLECTION,
+                count_filter=qmodels.Filter(must=[
+                    qmodels.FieldCondition(
+                        key="publisher",
+                        match=qmodels.MatchValue(value=publisher),
+                    )
+                ]),
+                exact=False,
+            )
+            counts[source_type] = result.count
+        except Exception:
+            counts[source_type] = 0
+
+    total_chunks = sum(counts.values())
+    breakdown = SourceBreakdown(total=total_chunks, **counts)
+
+    # Read last ingest time from sentinel file mtime
+    last_ingest = None
+    sentinel = Path(QDRANT_PATH.replace("http://qdrant:6333", "/app/data/qdrant")
+                    if QDRANT_PATH.startswith("http") else QDRANT_PATH) / ".ingested"
+    if sentinel.exists():
+        mtime = sentinel.stat().st_mtime
+        last_ingest = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+
+    return StatsResponse(
+        by_source=breakdown,
+        total_chunks=total_chunks,
+        collection_name=QDRANT_COLLECTION,
+        embedding_model=EMBEDDING_MODEL,
+        rerank_enabled=RERANK_ENABLED,
+        expand_enabled=EXPAND_ENABLED,
+        last_ingest=last_ingest,
     )
 
 

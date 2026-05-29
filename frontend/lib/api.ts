@@ -1,4 +1,4 @@
-import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument } from "./types";
+import type { AskRequest, AskResponse, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -119,13 +119,13 @@ export async function searchDocuments(
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_URL}/health`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Błąd połączenia z API: ${res.status}`);
-  }
-
+  const res = await fetch(`${API_URL}/health`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Błąd połączenia z API: ${res.status}`);
   return res.json() as Promise<HealthResponse>;
+}
+
+export async function fetchStats(): Promise<StatsResponse> {
+  const res = await fetch(`${API_URL}/stats`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Błąd pobierania statystyk: ${res.status}`);
+  return res.json() as Promise<StatsResponse>;
 }

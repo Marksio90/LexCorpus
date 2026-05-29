@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { fetchHealth } from "@/lib/api";
+import { fetchHealth, fetchStats } from "@/lib/api";
 import { AdminStats } from "@/components/AdminStats";
-import type { HealthResponse } from "@/lib/types";
+import type { HealthResponse, StatsResponse } from "@/lib/types";
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -17,8 +18,10 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchHealth();
-      setHealth(data);
+      const [healthData, statsData] = await Promise.allSettled([fetchHealth(), fetchStats()]);
+      if (healthData.status === "fulfilled") setHealth(healthData.value);
+      else throw new Error((healthData.reason as Error).message);
+      if (statsData.status === "fulfilled") setStats(statsData.value);
       setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Nie można pobrać danych.");
@@ -129,7 +132,7 @@ export default function AdminPage() {
         )}
 
         {health ? (
-          <AdminStats health={health} />
+          <AdminStats health={health} stats={stats} />
         ) : !error ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />

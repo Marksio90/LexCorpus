@@ -59,7 +59,7 @@ export default function AskPage() {
           setStreamingText(null);
           setLoading(false);
         },
-      }, undefined, sourceType ? { source_type_filter: sourceType } : undefined);
+      }, sourceType ? { source_type_filter: sourceType } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd.");
       setStreamingText(null);

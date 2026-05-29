@@ -87,6 +87,26 @@ class HealthResponse(BaseModel):
     collection_count: Optional[int] = None
 
 
+class SourceBreakdown(BaseModel):
+    legislation: int = 0
+    judgment_nsa: int = 0
+    judgment_sn: int = 0
+    judgment_tk: int = 0
+    judgment_common: int = 0
+    judgment_kio: int = 0
+    total: int = 0
+
+
+class StatsResponse(BaseModel):
+    by_source: SourceBreakdown
+    total_chunks: int
+    collection_name: str
+    embedding_model: str
+    rerank_enabled: bool
+    expand_enabled: bool
+    last_ingest: Optional[str] = None   # ISO datetime of last ingest sentinel mtime
+
+
 class ErrorResponse(BaseModel):
     detail: str
     error_type: str = "error"
