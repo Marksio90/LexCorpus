@@ -1,0 +1,139 @@
+name: Full LLM eval (main only)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      compare_gpt4:
+        description: "Porównaj z GPT-4o baseline"
+        type: boolean
+        default: false
+
+concurrency:
+  group: eval-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval-llm:
+    name: LLM eval vs GPT-4o
+    runs-on: ubuntu-latest
+    # Require OPENAI_API_KEY to be set in repo secrets
+    if: vars.RUN_LLM_EVAL != 'false'
+
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd "wget -qO- http://localhost:6333/healthz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install --quiet \
+            qdrant-client \
+            sentence-transformers \
+            openai \
+            python-dotenv \
+            tqdm
+
+      - name: Ingest sample data
+        env:
+          QDRANT_PATH: http://localhost:6333
+        run: |
+          python scripts/ingest_sample.py --limit 500 --qdrant http://localhost:6333 || true
+        continue-on-error: true
+
+      - name: Run full LLM eval
+        env:
+          QDRANT_PATH: http://localhost:6333
+          QDRANT_COLLECTION: lexcorpus
+          EMBEDDING_MODEL: paraphrase-multilingual-MiniLM-L12-v2
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4o-mini
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.compare_gpt4 }}" = "true" ]; then
+            EXTRA="--compare-gpt4"
+          fi
+          python scripts/run_eval.py \
+            --output results/eval_llm_ci.json \
+            --qdrant http://localhost:6333 \
+            --model paraphrase-multilingual-MiniLM-L12-v2 \
+            $EXTRA
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-llm-${{ github.sha }}
+          path: results/eval_llm_ci.json
+          retention-days: 90
+
+      - name: Check quality thresholds
+        run: |
+          python - <<'EOF'
+          import json, sys
+          with open("results/eval_llm_ci.json") as f:
+              data = json.load(f)
+          s = data["summary"]
+          print("=== Wyniki ewaluacji ===")
+          for k, v in s.items():
+              print(f"  {k}: {v}")
+
+          # Progi jakości — fail jeśli poniżej
+          MIN_KEYWORD_RATE = 0.60   # min 60% słów kluczowych w wynikach
+          MIN_RETRIEVAL = 0.50      # min avg retrieval score
+
+          failed = False
+          if s.get("avg_keyword_rate", 1.0) < MIN_KEYWORD_RATE:
+              print(f"FAIL: avg_keyword_rate {s['avg_keyword_rate']:.1%} < próg {MIN_KEYWORD_RATE:.0%}")
+              failed = True
+          if s.get("avg_retrieval_score", 1.0) < MIN_RETRIEVAL:
+              print(f"FAIL: avg_retrieval_score {s['avg_retrieval_score']:.3f} < próg {MIN_RETRIEVAL:.2f}")
+              failed = True
+
+          if failed:
+              sys.exit(1)
+          print("OK: wszystkie progi jakości spełnione")
+          EOF
+
+      - name: Post eval summary to commit status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('results/eval_llm_ci.json')) return;
+            const data = JSON.parse(fs.readFileSync('results/eval_llm_ci.json', 'utf8'));
+            const s = data.summary;
+            const lines = [
+              '## Pełna ewaluacja LLM',
+              '',
+              `| Metryka | Wartość |`,
+              `|---------|---------|`,
+              `| Liczba pytań | ${s.n_questions} |`,
+              `| Avg retrieval score | ${(s.avg_retrieval_score * 100).toFixed(1)}% |`,
+              `| Avg keyword rate | ${(s.avg_keyword_rate * 100).toFixed(1)}% |`,
+            ];
+            if (s.lexcorpus_avg_fact_rate !== undefined) {
+              lines.push(`| LexCorpus fact rate | ${(s.lexcorpus_avg_fact_rate * 100).toFixed(1)}% |`);
+            }
+            if (s.lexcorpus_vs_gpt4) {
+              lines.push(`| vs GPT-4o | ${s.lexcorpus_vs_gpt4} |`);
+            }
+            lines.push('', `*Commit: ${context.sha.slice(0, 7)}*`);
+            console.log(lines.join('\n'));

@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend: lint + type-check ───────────────────────────────────────────────
+  backend-lint:
+    name: Backend lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install --quiet \
+            ruff \
+            mypy \
+            fastapi \
+            pydantic \
+            qdrant-client \
+            sentence-transformers \
+            openai \
+            apscheduler \
+            python-dotenv \
+            tqdm
+
+      - name: Ruff lint
+        run: ruff check api/ rag/ scripts/ --select E,F,W,I --ignore E501
+
+      - name: Mypy (api)
+        run: mypy api/ --ignore-missing-imports --no-strict-optional
+        continue-on-error: true   # warnings only until stubs are complete
+
+  # ── Frontend: type-check + build ────────────────────────────────────────────
+  frontend-typecheck:
+    name: Frontend typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Next.js build (no API needed)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-secret-not-real
+
+  # ── Retrieval eval (--no-llm, fast — runs on every push) ────────────────────
+  retrieval-eval:
+    name: Retrieval eval (no LLM)
+    runs-on: ubuntu-latest
+    # Only run when there are changes to RAG or API code
+    if: |
+      contains(github.event.head_commit.modified, 'rag/') ||
+      contains(github.event.head_commit.modified, 'api/') ||
+      github.event_name == 'pull_request'
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd "wget -qO- http://localhost:6333/healthz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install --quiet \
+            qdrant-client \
+            sentence-transformers \
+            openai \
+            python-dotenv \
+            tqdm
+
+      - name: Ingest sample data (50 chunks)
+        env:
+          QDRANT_PATH: http://localhost:6333
+        run: |
+          if [ -f data/eval_questions.jsonl ]; then
+            python scripts/ingest_sample.py --limit 200 --qdrant http://localhost:6333 || true
+          fi
+        continue-on-error: true
+
+      - name: Run retrieval eval
+        env:
+          QDRANT_PATH: http://localhost:6333
+          QDRANT_COLLECTION: lexcorpus
+          EMBEDDING_MODEL: paraphrase-multilingual-MiniLM-L12-v2
+        run: |
+          python scripts/run_eval.py \
+            --no-llm \
+            --output results/eval_retrieval_ci.json \
+            --qdrant http://localhost:6333 \
+            --model paraphrase-multilingual-MiniLM-L12-v2
+        continue-on-error: true
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-retrieval-${{ github.sha }}
+          path: results/eval_retrieval_ci.json
+          if-no-files-found: warn
+
+      - name: Comment eval summary on PR
+        if: github.event_name == 'pull_request' && hashFiles('results/eval_retrieval_ci.json') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('results/eval_retrieval_ci.json', 'utf8'));
+            const s = data.summary;
+            const body = [
+              '## Ewaluacja retrieval (--no-llm)',
+              '',
+              `| Metryka | Wartość |`,
+              `|---------|---------|`,
+              `| Liczba pytań | ${s.n_questions} |`,
+              `| Avg retrieval score | ${(s.avg_retrieval_score * 100).toFixed(1)}% |`,
+              `| Avg keyword rate | ${(s.avg_keyword_rate * 100).toFixed(1)}% |`,
+              '',
+              `*Commit: ${context.sha.slice(0, 7)}*`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
