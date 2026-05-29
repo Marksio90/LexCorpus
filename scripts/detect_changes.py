@@ -277,7 +277,7 @@ def notify_registry_subscribers(db_path: str, new_chunks: list[dict]) -> int:
     smtp_port     = int(os.getenv("EMAIL_SERVER_PORT", "587"))
     smtp_user     = os.getenv("EMAIL_SERVER_USER", "")
     smtp_pass     = os.getenv("EMAIL_SERVER_PASSWORD", "")
-    email_from    = os.getenv("EMAIL_FROM", "LexCorpus <noreply@lexcorpus.pl>")
+    email_from    = os.getenv("EMAIL_FROM", "LexCorpus <noreply@lexcorpus.app>")
     base_url      = os.getenv("NEXTAUTH_URL", "http://localhost:3000")
 
     if not smtp_host or not smtp_user:

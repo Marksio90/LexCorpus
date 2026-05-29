@@ -5,6 +5,10 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 
 // Plany muszą być wcześniej utworzone w dashboardzie Stripe.
 // Ustaw STRIPE_PRICE_PRO i STRIPE_PRICE_KANCELARIA w .env
+if (!process.env.STRIPE_PRICE_PRO || !process.env.STRIPE_PRICE_KANCELARIA) {
+  console.warn("[stripe] STRIPE_PRICE_PRO lub STRIPE_PRICE_KANCELARIA nie jest ustawiony — checkout będzie niedostępny");
+}
+
 export const STRIPE_PRICES: Record<string, string> = {
   pro:        process.env.STRIPE_PRICE_PRO        ?? "",
   kancelaria: process.env.STRIPE_PRICE_KANCELARIA ?? "",

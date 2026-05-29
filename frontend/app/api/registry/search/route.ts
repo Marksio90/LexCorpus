@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         body: JSON.stringify({
           query:             q,
           top_k:             12,
-          source_type_filter: "legislation",
+          source_type_filter: req.nextUrl.searchParams.get("type") ?? null,
         }),
       },
     );

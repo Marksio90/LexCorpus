@@ -73,8 +73,8 @@ export async function POST(req: NextRequest) {
           source_type_filter: st,
         }),
       })
-        .then((r) => r.ok ? r.json() as Promise<{ results: SearchHit[] }> : { results: [] })
-        .then((d) => d.results.map((r) => ({ ...r, source_type: st }))),
+        .then((r) => r.ok ? r.json() as Promise<{ results?: SearchHit[] }> : { results: [] })
+        .then((d) => (d.results ?? []).map((r) => ({ ...r, source_type: st }))),
     ),
   );
 

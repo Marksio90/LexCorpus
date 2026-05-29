@@ -22,6 +22,6 @@ export async function sendMail(opts: {
   html:    string;
   text?:   string;
 }): Promise<void> {
-  const from = process.env.EMAIL_FROM || "LexCorpus <noreply@lexcorpus.pl>";
+  const from = process.env.EMAIL_FROM || "LexCorpus <noreply@lexcorpus.app>";
   await getTransport().sendMail({ from, ...opts });
 }

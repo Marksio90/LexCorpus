@@ -178,8 +178,8 @@ def run_sync() -> None:
             try:
                 sentinel.parent.mkdir(parents=True, exist_ok=True)
                 sentinel.touch()
-            except Exception:
-                pass
+            except Exception as _e:
+                log.warning("[sync] Nie udało się zapisać pliku sentinel: %s", _e)
             lines.append("Sync complete ✓")
 
             # Step 4: detect changes and match with user query history

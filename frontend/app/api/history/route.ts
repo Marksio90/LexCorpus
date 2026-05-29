@@ -24,7 +24,7 @@ export async function GET() {
     timestamp:     r.createdAt.toISOString(),
     question:      r.question,
     answer:        r.answer,
-    sources:       JSON.parse(r.sources) as SourceDocument[],
+    sources:       (() => { try { return JSON.parse(r.sources) as SourceDocument[]; } catch { return []; } })(),
     model_used:    r.modelUsed,
     retrieval_used: r.retrievalUsed,
   }));

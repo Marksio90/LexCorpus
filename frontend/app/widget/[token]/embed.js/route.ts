@@ -20,7 +20,13 @@ export async function GET(
     });
   }
 
-  const base = process.env.NEXTAUTH_URL ?? "https://lexcorpus.pl";
+  const base = process.env.NEXTAUTH_URL;
+  if (!base) {
+    return new Response("// Widget misconfigured: NEXTAUTH_URL not set", {
+      status: 500,
+      headers: { "Content-Type": "application/javascript" },
+    });
+  }
   const accent = config.accentColor;
   const title  = config.title.replace(/`/g, "\\`");
 

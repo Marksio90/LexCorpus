@@ -99,7 +99,7 @@ export function Sidebar({ open, onClose, onSelectQuestion }: SidebarProps) {
             className="text-blue-600 dark:text-blue-400 hover:underline"
             onClick={onClose}
           >
-            Historia
+            Moje pytania
           </a>
           <span className="text-slate-300 dark:text-slate-600">|</span>
           <a
@@ -147,7 +147,7 @@ export function Sidebar({ open, onClose, onSelectQuestion }: SidebarProps) {
             className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             onClick={onClose}
           >
-            Historia
+            Zmiany aktów
           </a>
           <span className="text-slate-300 dark:text-slate-600">|</span>
           <a
