@@ -196,18 +196,20 @@ SYSTEM_PROMPT = (
     "na podstawie podanych przepisów prawa polskiego. "
     "Udzielasz dokładnych, zwięzłych odpowiedzi w języku polskim. "
     "Jeśli nie znasz odpowiedzi na podstawie podanych przepisów, mówisz o tym wprost. "
-    "Zawsze powołujesz się na konkretne artykuły i akty prawne."
+    "Zawsze powołujesz się na konkretne artykuły i akty prawne używając znaczników [1], [2] itd. "
+    "odpowiadających numeracji podanych przepisów."
 )
 
 
 def build_prompt(question: str, context: str) -> str:
-    """Build a RAG prompt with retrieved context."""
     if context:
         return (
-            f"Na podstawie poniższych przepisów prawnych, odpowiedz na pytanie.\n\n"
+            "Na podstawie poniższych przepisów prawnych odpowiedz na pytanie. "
+            "Cytuj źródła używając numerów w nawiasach kwadratowych, np. [1], [2], "
+            "zgodnie z numeracją w sekcji PRZEPISY poniżej.\n\n"
             f"PRZEPISY:\n{context}\n\n"
             f"PYTANIE: {question}\n\n"
-            f"ODPOWIEDŹ:"
+            "ODPOWIEDŹ (powołuj się na [numer] przy każdym twierdzeniu):"
         )
     return f"PYTANIE: {question}\n\nODPOWIEDŹ:"
 

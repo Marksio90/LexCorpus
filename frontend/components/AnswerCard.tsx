@@ -1,10 +1,46 @@
 "use client";
 
+import { useRef } from "react";
 import type { AskResponse } from "@/lib/types";
 import { SourceList } from "./SourceList";
 
 interface AnswerCardProps {
   response: AskResponse;
+}
+
+/** Replace [1], [2] etc. in answer text with clickable anchor links. */
+function AnswerText({ text, sourceCount }: { text: string; sourceCount: number }) {
+  if (sourceCount === 0) {
+    return <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">{text}</p>;
+  }
+
+  // Split on citation markers like [1], [2], ..., [99]
+  const parts = text.split(/(\[\d+\])/g);
+
+  return (
+    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        const match = part.match(/^\[(\d+)\]$/);
+        if (!match) return part;
+        const num = parseInt(match[1], 10);
+        if (num < 1 || num > sourceCount) return part;
+        return (
+          <a
+            key={i}
+            href={`#source-${num}`}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(`source-${num}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className="inline-flex items-center justify-center w-5 h-5 mx-0.5 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer align-middle"
+            title={`Przejdź do źródła ${num}`}
+          >
+            {num}
+          </a>
+        );
+      })}
+    </p>
+  );
 }
 
 export function AnswerCard({ response }: AnswerCardProps) {
@@ -41,9 +77,7 @@ export function AnswerCard({ response }: AnswerCardProps) {
           </div>
         </div>
 
-        <div className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
-          {answer}
-        </div>
+        <AnswerText text={answer} sourceCount={sources.length} />
       </div>
 
       {/* Sources */}
