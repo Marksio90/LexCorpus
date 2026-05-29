@@ -245,6 +245,140 @@ def main() -> None:
 
     log.info("Gotowe — %d zmian, %d alertów (próg=%.2f)", changes_created, alerts_created, args.threshold)
 
+    # Registry subscriptions — notify users watching changed acts directly
+    registry_notified = notify_registry_subscribers(args.db, new_chunks)
+    if registry_notified:
+        log.info("Powiadomiono %d subskrybentów rejestru", registry_notified)
+
+
+# ── Registry subscription notifications ───────────────────────────────────────
+
+def get_registry_subscribers(db_path: str, act_id: str) -> list[dict]:
+    """Returns users subscribed to a specific actId with their email."""
+    try:
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            """SELECT rs.userId, u.email, rs.title, rs.url
+               FROM RegistrySubscription rs
+               JOIN User u ON u.id = rs.userId
+               WHERE rs.actId = ? AND u.email IS NOT NULL""",
+            (act_id,),
+        ).fetchall()
+        conn.close()
+        return [{"userId": r[0], "email": r[1], "title": r[2], "url": r[3]} for r in rows]
+    except Exception as e:
+        log.warning("Błąd pobierania subskrybentów rejestru: %s", e)
+        return []
+
+
+def notify_registry_subscribers(db_path: str, new_chunks: list[dict]) -> int:
+    """Send immediate email to users who subscribed to acts present in new_chunks."""
+    smtp_host     = os.getenv("EMAIL_SERVER_HOST", "")
+    smtp_port     = int(os.getenv("EMAIL_SERVER_PORT", "587"))
+    smtp_user     = os.getenv("EMAIL_SERVER_USER", "")
+    smtp_pass     = os.getenv("EMAIL_SERVER_PASSWORD", "")
+    email_from    = os.getenv("EMAIL_FROM", "LexCorpus <noreply@lexcorpus.pl>")
+    base_url      = os.getenv("NEXTAUTH_URL", "http://localhost:3000")
+
+    if not smtp_host or not smtp_user:
+        log.info("SMTP nie skonfigurowany — pomijam powiadomienia rejestru")
+        return 0
+
+    # Deduplicate: one email per (userId, actId) per run
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    # Group chunks by act_id
+    chunks_by_act: dict[str, list[dict]] = {}
+    for chunk in new_chunks:
+        aid = chunk.get("act_id", "")
+        if aid:
+            chunks_by_act.setdefault(aid, []).append(chunk)
+
+    notified: set[tuple[str, str]] = set()  # (userId, actId)
+    count = 0
+
+    for act_id, chunks in chunks_by_act.items():
+        subscribers = get_registry_subscribers(db_path, act_id)
+        if not subscribers:
+            continue
+
+        chunk = chunks[0]  # representative chunk
+        act_title = chunk.get("title", act_id)
+        act_url   = chunk.get("url", "")
+        summary   = chunk.get("summary", chunk.get("text", "")[:200])
+
+        for sub in subscribers:
+            key = (sub["userId"], act_id)
+            if key in notified:
+                continue
+            notified.add(key)
+
+            try:
+                html = _build_registry_email(
+                    sub["email"], act_title, act_url or sub.get("url") or "",
+                    summary, base_url,
+                )
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"⚖️ LexCorpus: zmiana w „{act_title[:60]}"
+                msg["From"]    = email_from
+                msg["To"]      = sub["email"]
+                msg.attach(MIMEText(html, "html", "utf-8"))
+
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    server.starttls()
+                    if smtp_user:
+                        server.login(smtp_user, smtp_pass)
+                    server.sendmail(email_from, [sub["email"]], msg.as_string())
+
+                count += 1
+                log.info("Powiadomiono %s o zmianach w %s", sub["email"], act_id)
+            except Exception as e:
+                log.warning("Błąd wysyłania do %s: %s", sub["email"], e)
+
+    return count
+
+
+def _build_registry_email(email: str, act_title: str, act_url: str, summary: str, base_url: str) -> str:
+    unsub_url = f"{base_url}/registry"
+    doc_link  = f'<a href="{act_url}" style="color:#2563eb">Otwórz akt ↗</a>' if act_url else ""
+    return f"""<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:32px 16px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+        <tr>
+          <td style="background:linear-gradient(135deg,#1d4ed8,#2563eb);padding:28px 40px">
+            <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700"><span style="opacity:.8">Lex</span>Corpus</h1>
+            <p style="margin:4px 0 0;color:#bfdbfe;font-size:13px">Powiadomienie o zmianie w obserwowanym akcie</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 40px">
+            <p style="margin:0 0 6px;font-size:13px;color:#64748b">Obserwowany akt:</p>
+            <h2 style="margin:0 0 16px;font-size:17px;color:#0f172a;font-weight:700">{act_title}</h2>
+            <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.6">{summary}</p>
+            <div style="display:flex;gap:16px;font-size:13px">
+              {doc_link}
+              <a href="{base_url}/alerts" style="color:#2563eb">Zobacz alerty →</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8fafc;padding:16px 40px;border-top:1px solid #e2e8f0">
+            <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center">
+              Obserwujesz ten akt w LexCorpus.
+              <a href="{unsub_url}" style="color:#94a3b8">Zarządzaj subskrypcjami</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
 
 if __name__ == "__main__":
     main()

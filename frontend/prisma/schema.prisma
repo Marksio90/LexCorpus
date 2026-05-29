@@ -64,6 +64,7 @@ model User {
   alerts           LegalAlert[]
   privateDocuments PrivateDocument[]
   widgetConfig     WidgetConfig?
+  registrySubs     RegistrySubscription[]
 }
 
 // ── Legal Diff alerts ─────────────────────────────────────────────────────────
@@ -177,6 +178,23 @@ model WidgetConfig {
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Registry subscriptions ────────────────────────────────────────────────────
+
+model RegistrySubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  actId     String   // ISAP actId / identifier
+  title     String   // display name of the act
+  url       String?  // ISAP source URL
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, actId])
+  @@index([actId])
+  @@index([userId])
 }
 
 // ── Usage tracking ────────────────────────────────────────────────────────────

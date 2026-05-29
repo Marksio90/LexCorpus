@@ -24,5 +24,6 @@ export const config = {
     "/alerts/:path*",
     "/draft/:path*",
     "/analyze/:path*",
+    "/registry/:path*",
   ],
 };
