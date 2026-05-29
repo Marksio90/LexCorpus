@@ -19,18 +19,20 @@ export async function POST(req: NextRequest) {
   if (!body.question?.trim() || !body.answer?.trim()) {
     return NextResponse.json({ error: "Wymagane: question, answer." }, { status: 400 });
   }
+  if (body.question.length > 2000 || body.answer.length > 20000) {
+    return NextResponse.json({ error: "Treść zbyt długa." }, { status: 400 });
+  }
 
+  const days      = Math.max(1, Math.min(365, body.expiresInDays ?? 30));
   const token     = randomBytes(16).toString("base64url"); // 22-char URL-safe token
-  const expiresAt = body.expiresInDays
-    ? new Date(Date.now() + body.expiresInDays * 86_400_000)
-    : null;
+  const expiresAt = new Date(Date.now() + days * 86_400_000);
 
   const report = await prisma.sharedReport.create({
     data: {
       token,
       userId:   session.user.id,
       question: body.question.trim(),
-      answer:   body.answer.trim(),
+      answer:   body.answer.trim().slice(0, 20000),
       sources:  JSON.stringify(body.sources ?? []),
       modelUsed: body.modelUsed ?? "unknown",
       expiresAt,

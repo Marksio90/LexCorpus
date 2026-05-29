@@ -35,13 +35,14 @@ export async function POST(
   if (!body.question?.trim()) {
     return new Response(JSON.stringify({ error: "Brak pytania." }), { status: 400 });
   }
+  const question = body.question.trim().slice(0, 2000);
 
   // Forward to FastAPI stream
   const upstream = await fetch(`${API_URL}/ask/stream`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      question:          body.question,
+      question,
       use_rag:           true,
       source_type_filter: null,
       top_k:             5,
@@ -72,13 +73,16 @@ export async function OPTIONS(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
-  await params; // consume
+  const { token } = await params;
+  const config = await prisma.widgetConfig.findUnique({ where: { token } });
+  const origin = req.headers.get("origin");
+  const allowed = config?.enabled && originAllowed(origin, config.allowedDomains ?? "");
   return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin":  req.headers.get("origin") ?? "*",
+    status: allowed ? 204 : 403,
+    headers: allowed ? {
+      "Access-Control-Allow-Origin":  origin ?? "",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
-    },
+    } : {},
   });
 }

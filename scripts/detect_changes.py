@@ -340,9 +340,16 @@ def notify_registry_subscribers(db_path: str, new_chunks: list[dict]) -> int:
     return count
 
 
+def _esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
 def _build_registry_email(email: str, act_title: str, act_url: str, summary: str, base_url: str) -> str:
-    unsub_url = f"{base_url}/registry"
-    doc_link  = f'<a href="{act_url}" style="color:#2563eb">Otwórz akt ↗</a>' if act_url else ""
+    unsub_url  = f"{base_url}/registry"
+    safe_title = _esc(act_title)
+    safe_sum   = _esc(summary)
+    safe_url   = _esc(act_url)
+    doc_link   = f'<a href="{safe_url}" style="color:#2563eb">Otwórz akt ↗</a>' if act_url else ""
     return f"""<!DOCTYPE html>
 <html lang="pl"><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
@@ -358,8 +365,8 @@ def _build_registry_email(email: str, act_title: str, act_url: str, summary: str
         <tr>
           <td style="padding:28px 40px">
             <p style="margin:0 0 6px;font-size:13px;color:#64748b">Obserwowany akt:</p>
-            <h2 style="margin:0 0 16px;font-size:17px;color:#0f172a;font-weight:700">{act_title}</h2>
-            <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.6">{summary}</p>
+            <h2 style="margin:0 0 16px;font-size:17px;color:#0f172a;font-weight:700">{safe_title}</h2>
+            <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.6">{safe_sum}</p>
             <div style="display:flex;gap:16px;font-size:13px">
               {doc_link}
               <a href="{base_url}/alerts" style="color:#2563eb">Zobacz alerty →</a>
