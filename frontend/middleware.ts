@@ -23,5 +23,6 @@ export const config = {
     "/upgrade/:path*",
     "/alerts/:path*",
     "/draft/:path*",
+    "/analyze/:path*",
   ],
 };
