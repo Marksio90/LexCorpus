@@ -39,6 +39,12 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
+# Optional ColBERT reranker — imported lazily to avoid hard dependency at module load
+try:
+    from rag.colbert_retriever import ColBERTRetriever as _ColBERTRetriever
+except ImportError:
+    _ColBERTRetriever = None  # type: ignore[assignment,misc]
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -134,6 +140,7 @@ class LegalRetriever:
         query_prefix: str = DEFAULT_QUERY_PREFIX,
         crag_enabled: bool = True,
         adaptive_rag: bool = True,
+        colbert_reranker: "_ColBERTRetriever | None" = None,
     ) -> None:
         self.model_name = model_name
         self.rerank_model_name = rerank_model_name
@@ -146,6 +153,9 @@ class LegalRetriever:
         self.query_prefix = query_prefix       # prepended to queries at embed time (NOT to docs)
         self.crag_enabled = crag_enabled       # CRAG: filter low-confidence retrieved chunks
         self.adaptive_rag = adaptive_rag       # Adaptive RAG: route by query complexity
+        # ColBERT late-interaction reranker — applied after cross-encoder (or alone when
+        # cross-encoder is disabled). Injected via rag.colbert_retriever.ColBERTRetriever.
+        self.colbert_reranker = colbert_reranker
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
@@ -388,6 +398,7 @@ class LegalRetriever:
         expand_context: bool = CONTEXT_EXPAND,
         exclude_repealed: bool = True,
         as_of_year: int | None = None,
+        eurovoc_domain: str | list[str] | None = None,
     ) -> list[RetrievedChunk]:
         """
         Full pipeline: query expansion → hybrid search → dedup → cross-encoder re-rank.
@@ -406,6 +417,18 @@ class LegalRetriever:
                 to legislation/tax source types; judgments are never excluded by this flag.
             as_of_year: Filter legislation to acts published up to this year (inclusive).
                 Useful for "stan prawny na rok X" historical queries.
+            eurovoc_domain: Filter by EuroVoc domain label(s). Pass a single string
+                (e.g. "prawo pracy") or a list of strings for OR matching. Only chunks
+                whose eurovoc_labels field contains at least one of the given domains
+                are returned. Requires chunks to have been classified by
+                scripts/classify_eurovoc.py before ingestion.
+
+                Example:
+                    retriever.retrieve(
+                        "umowy o pracę",
+                        source_type_filter="legislation",
+                        eurovoc_domain="prawo pracy",
+                    )
         """
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
@@ -469,6 +492,22 @@ class LegalRetriever:
                     match=qmodels.MatchAny(any=publishers),
                 )
             )
+
+        # EuroVoc domain filter — requires eurovoc_labels payload index in Qdrant.
+        # Qdrant's MatchAny on a keyword-indexed array field matches documents where
+        # the array contains ANY of the provided values (OR semantics).
+        if eurovoc_domain is not None:
+            if isinstance(eurovoc_domain, str):
+                eurovoc_domains = [eurovoc_domain]
+            else:
+                eurovoc_domains = list(eurovoc_domain)
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="eurovoc_labels",
+                    match=qmodels.MatchAny(any=eurovoc_domains),
+                )
+            )
+            log.debug("EuroVoc domain filter: %s", eurovoc_domains)
 
         # Auto-route if no explicit filter provided
         if source_type_filter is None:
@@ -548,7 +587,12 @@ class LegalRetriever:
                 results = self._crag_gate(query, results, already_reranked=False)
             if has_children:
                 results = self._lift_to_parent(results)
-            return self._expand_context(results) if (expand_context and not has_children) else results
+            results = self._expand_context(results) if (expand_context and not has_children) else results
+            # ── ColBERT reranking (optional, no cross-encoder path) ───────────
+            if self.colbert_reranker is not None:
+                log.debug("Applying ColBERT reranking (no-CE path) to %d results", len(results))
+                results = self.colbert_reranker.rerank(query, results, top_k)
+            return results
 
         # ── Cross-encoder re-ranking ───────────────────────────────────────────
         # Re-rank on child text (precise) before lifting to parent
@@ -567,7 +611,17 @@ class LegalRetriever:
 
         if has_children:
             results = self._lift_to_parent(results)
-        return self._expand_context(results) if (expand_context and not has_children) else results
+        results = self._expand_context(results) if (expand_context and not has_children) else results
+
+        # ── ColBERT late-interaction reranking (optional final pass) ──────────
+        # Applied after cross-encoder to provide a complementary token-level signal.
+        # ColBERT's MaxSim handles Polish morphology better than single-vector CE.
+        # The top_k pool from CE is re-scored; CE ordering may be partially re-shuffled.
+        if self.colbert_reranker is not None:
+            log.debug("Applying ColBERT reranking to %d CE results", len(results))
+            results = self.colbert_reranker.rerank(query, results, top_k)
+
+        return results
 
     def _expand_context(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """Enrich each chunk with neighbor text — one Qdrant query per unique document."""

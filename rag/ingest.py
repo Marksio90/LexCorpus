@@ -92,6 +92,14 @@ def ensure_collection(
             field_name=field,
             field_schema=qmodels.PayloadSchemaType.KEYWORD,
         )
+    # EuroVoc multi-label classification — stored as a list of domain strings.
+    # Qdrant KEYWORD index on array fields supports filter queries like:
+    #   FieldCondition(key="eurovoc_labels", match=MatchAny(any=["prawo pracy"]))
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="eurovoc_labels",
+        field_schema=qmodels.PayloadSchemaType.KEYWORD,
+    )
     client.create_payload_index(
         collection_name=collection_name,
         field_name="is_repealed",
@@ -171,6 +179,12 @@ def build_payload(chunk: dict) -> dict:
     # Contextual Retrieval: store the LLM-generated context prefix (used at embed time)
     if chunk.get("ctx_prefix"):
         payload["ctx_prefix"] = chunk["ctx_prefix"]
+    # EuroVoc multi-label classification — list of domain strings.
+    # Populated by scripts/classify_eurovoc.py. Stored as a keyword-indexed
+    # array so Qdrant can filter on individual labels.
+    eurovoc_labels = chunk.get("eurovoc_labels")
+    if eurovoc_labels and isinstance(eurovoc_labels, list):
+        payload["eurovoc_labels"] = [str(lbl) for lbl in eurovoc_labels]
     return payload
 
 

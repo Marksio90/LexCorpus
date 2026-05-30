@@ -30,6 +30,13 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lexcorpus")
 LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# vLLM — OpenAI-compatible local inference (e.g. Bielik-11B via docker-compose.vllm.yml)
+# When VLLM_ENABLED=true, generate_with_openai() routes to the vLLM endpoint instead
+# of the real OpenAI API. Query expansion and HyDE still use OPENAI_API_KEY if set.
+VLLM_ENABLED = os.getenv("VLLM_ENABLED", "false").lower() not in ("false", "0", "no")
+VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8001/v1")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "speakleash/Bielik-11B-v2.3-Instruct")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large-v2")
 RERANK_MODEL = os.getenv("RERANK_MODEL", "sdadas/polish-reranker-large-ranknet")
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
@@ -49,6 +56,7 @@ _retriever = None
 _local_model = None
 _local_tokenizer = None
 _openai_client = None
+_vllm_client = None        # OpenAI-compatible client pointed at vLLM
 _pg_pool = None
 
 
@@ -125,6 +133,28 @@ def init_openai():
     _openai_client = OpenAI(api_key=OPENAI_API_KEY)
     log.info("OpenAI client initialized (model: %s)", OPENAI_MODEL)
     return _openai_client
+
+
+def init_vllm_client():
+    """
+    Return an OpenAI-compatible client pointed at the vLLM inference server.
+
+    vLLM exposes the same REST API as OpenAI, so we use the standard openai
+    library with a custom base_url. A dummy api_key is required by the library
+    even though vLLM doesn't enforce authentication.
+    """
+    global _vllm_client
+    if _vllm_client is not None:
+        return _vllm_client
+
+    from openai import OpenAI
+    _vllm_client = OpenAI(
+        base_url=VLLM_BASE_URL,
+        api_key="vllm-no-auth",   # vLLM doesn't require a real key
+        timeout=120.0,             # longer timeout for first-token latency on large models
+    )
+    log.info("vLLM client initialized (base_url=%s, model=%s)", VLLM_BASE_URL, VLLM_MODEL)
+    return _vllm_client
 
 
 async def get_pg_pool():
@@ -308,20 +338,95 @@ def generate_with_local_model(prompt: str, max_new_tokens: int = 512) -> str:
 
 
 def generate_with_openai(prompt: str) -> str:
-    client = init_openai()
+    """
+    Generate an answer using either vLLM (when VLLM_ENABLED=true) or the real
+    OpenAI API. Both endpoints are OpenAI-API-compatible, so the same call works
+    for both. vLLM is preferred when available because it runs locally and uses
+    the fine-tuned Bielik model.
+    """
+    if VLLM_ENABLED:
+        client = init_vllm_client()
+        model = VLLM_MODEL
+        source = f"vllm:{VLLM_BASE_URL}"
+    else:
+        client = init_openai()
+        model = OPENAI_MODEL
+        source = "openai"
+
     if client is None:
-        return "Przepraszam, brak skonfigurowanego modelu językowego. Ustaw OPENAI_API_KEY."
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL, max_tokens=1024,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content.strip()
+        return (
+            "Przepraszam, brak skonfigurowanego modelu językowego. "
+            "Ustaw OPENAI_API_KEY lub włącz VLLM_ENABLED=true."
+        )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            max_tokens=1024,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as exc:
+        log.error("Generation failed via %s: %s", source, exc)
+        # If vLLM fails and OpenAI key is available, fall back gracefully
+        if VLLM_ENABLED and OPENAI_API_KEY:
+            log.warning("Falling back to OpenAI API after vLLM failure")
+            fallback_client = init_openai()
+            if fallback_client is not None:
+                try:
+                    response = fallback_client.chat.completions.create(
+                        model=OPENAI_MODEL,
+                        max_tokens=1024,
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                    )
+                    return response.choices[0].message.content.strip()
+                except Exception as exc2:
+                    log.error("OpenAI fallback also failed: %s", exc2)
+        raise
 
 
 def generate_answer(prompt: str) -> tuple[str, str]:
+    """
+    Generate an answer using the best available model.
+
+    Priority order:
+    1. Local transformers model (if LOCAL_MODEL_PATH is set and model loaded)
+    2. vLLM inference server (if VLLM_ENABLED=true)
+    3. OpenAI API (fallback)
+
+    Returns (answer_text, model_identifier) where model_identifier is shown
+    in the API response so the caller knows which backend was used.
+    """
     if _local_model is not None:
         try:
             return generate_with_local_model(prompt), LOCAL_MODEL_PATH or "local-model"
         except Exception as exc:
-            log.warning("Local model failed, falling back to OpenAI: %s", exc)
+            log.warning("Local model failed, falling back: %s", exc)
+
+    if VLLM_ENABLED:
+        try:
+            return generate_with_openai(prompt), f"vllm:{VLLM_MODEL}"
+        except Exception as exc:
+            log.warning("vLLM generation failed, falling back to OpenAI: %s", exc)
+            # generate_with_openai already attempted the fallback internally,
+            # so if we're here the exception propagated — try OpenAI directly.
+            if OPENAI_API_KEY:
+                client = init_openai()
+                if client is not None:
+                    response = client.chat.completions.create(
+                        model=OPENAI_MODEL, max_tokens=1024,
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt},
+                        ],
+                    )
+                    return response.choices[0].message.content.strip(), OPENAI_MODEL
+            raise
+
     return generate_with_openai(prompt), OPENAI_MODEL

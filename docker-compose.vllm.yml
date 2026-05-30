@@ -1,0 +1,120 @@
+# docker-compose.vllm.yml — vLLM GPU inference overlay for Bielik-11B
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.vllm.yml up
+#
+# This override file:
+#   1. Adds the 'vllm' service running vllm/vllm-openai with Bielik-11B-v2.3-Instruct
+#   2. Overrides the 'api' service to route generation through vLLM instead of OpenAI
+#
+# Requirements:
+#   - NVIDIA GPU with >= 16 GB VRAM (24 GB recommended for fp16 without quantisation)
+#   - nvidia-container-toolkit installed on the host
+#   - docker compose plugin v2.20+ (for 'deploy.resources.reservations.devices')
+#
+# AWQ quantised model (optional, fits in 12 GB VRAM):
+#   Set VLLM_MODEL=speakleash/Bielik-11B-v2.3-Instruct-AWQ in your .env
+#   and uncomment the --quantization awq flag below.
+#
+# Environment variables (set in .env or export before running):
+#   VLLM_MODEL          HuggingFace model id (default: speakleash/Bielik-11B-v2.3-Instruct)
+#   VLLM_GPU_UTIL       Fraction of GPU memory to use (default: 0.90)
+#   VLLM_MAX_MODEL_LEN  Max context length in tokens (default: 8192)
+#   HF_TOKEN            HuggingFace access token (optional; needed for gated models)
+
+services:
+
+  # ── vLLM OpenAI-compatible inference server ────────────────────────────────
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: lexcorpus-vllm
+    restart: unless-stopped
+
+    # Expose the OpenAI-compatible API on host port 8001.
+    # Inside the Docker network other services reach it as http://vllm:8001/v1
+    ports:
+      - "8001:8001"
+
+    # vLLM needs access to the HuggingFace model cache.
+    # On first run the model is downloaded from HuggingFace (~22 GB).
+    # Subsequent runs reuse the cache, so mount a host path.
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+
+    environment:
+      # HuggingFace token for downloading model weights (set in .env)
+      - HF_TOKEN=${HF_TOKEN:-}
+      # Disable tokeniser parallelism warning inside the container
+      - TOKENIZERS_PARALLELISM=false
+
+    command: >
+      --model ${VLLM_MODEL:-speakleash/Bielik-11B-v2.3-Instruct}
+      --served-model-name ${VLLM_MODEL:-speakleash/Bielik-11B-v2.3-Instruct}
+      --host 0.0.0.0
+      --port 8001
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
+      --gpu-memory-utilization ${VLLM_GPU_UTIL:-0.90}
+      --enable-prefix-caching
+      --dtype auto
+      --trust-remote-code
+      --disable-log-requests
+
+      # ── AWQ quantisation (uncomment when using an AWQ model) ────────────────
+      # --quantization awq
+
+    # GPU reservation — requires nvidia-container-toolkit on the host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # vLLM may take 3-5 minutes to load the model before accepting requests.
+    # The health check polls /health until the server is ready.
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >
+          wget -qO- http://localhost:8001/health
+          && wget -qO- http://localhost:8001/v1/models
+          || exit 1
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 300s   # 5 min grace period for model loading
+
+    # vLLM uses shared memory for tensor parallelism; default Docker limit is 64 MB
+    shm_size: "2g"
+
+    # Ensure vLLM has access to GPU features (needed by some CUDA kernels)
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
+  # ── Override api service to route generation through vLLM ─────────────────
+  api:
+    environment:
+      # Enable vLLM backend — when true, generate_with_openai() sends requests
+      # to the vLLM endpoint instead of OpenAI. The vLLM endpoint is fully
+      # OpenAI-compatible so no code changes are needed.
+      - VLLM_ENABLED=true
+      - VLLM_BASE_URL=http://vllm:8001/v1
+      - VLLM_MODEL=${VLLM_MODEL:-speakleash/Bielik-11B-v2.3-Instruct}
+
+      # Keep OpenAI key available as fallback (used for query expansion / HyDE)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # The OPENAI_MODEL env is overridden — LLM generation uses vLLM model
+      - OPENAI_MODEL=${VLLM_MODEL:-speakleash/Bielik-11B-v2.3-Instruct}
+
+    # The api must wait for vLLM to be healthy before starting so it can
+    # immediately accept generation requests on startup.
+    depends_on:
+      vllm:
+        condition: service_healthy
+
+volumes:
+  # Persistent volume for HuggingFace model weights cache.
+  # The Bielik-11B model is ~22 GB; ensure the volume has enough space.
+  huggingface_cache:
