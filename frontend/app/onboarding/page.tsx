@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -47,12 +47,12 @@ export default function OnboardingPage() {
 
   // On mount: check if this user already completed onboarding (backfills cookie too).
   // If done, skip straight to /ask.
-  useState(() => {
+  useEffect(() => {
     fetch("/api/onboarding/sync")
       .then((r) => r.json())
       .then(({ done }) => { if (done) router.replace("/ask"); })
       .catch(() => {});
-  });
+  }, []);
 
   async function finish() {
     await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
