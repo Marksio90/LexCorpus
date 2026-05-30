@@ -195,9 +195,9 @@ _CASE_ID_PATTERNS: list[re.Pattern] = [
         r"\b(?:I{1,3}V?|V?I{0,3}|[IVXLC]+)\s+[A-Z]{1,4}/[A-Z]{2}\s+\d+/\d{2,4}\b",
         re.IGNORECASE,
     ),
-    # "sygn. akt IV CSK 123/20"
+    # "sygn. akt IV CSK 123/20" — anchored to end with /YYYY pattern to avoid greediness
     re.compile(
-        r"sygn\.?\s+(?:akt\s+)?[A-ZŁŚŻŹ0-9/. -]{3,30}",
+        r"sygn\.?\s+(?:akt\s+)?(?:[A-ZŁŚŻŹ0-9]{1,8}(?:\s+[A-ZŁŚŻŹ0-9]{1,10}){0,3}\s+\d+/\d{2,4})",
         re.IGNORECASE,
     ),
     # "KIO 1234/20"
