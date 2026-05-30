@@ -58,6 +58,10 @@ lexcorpus-api = "api.main:start"
 where = ["."]
 include = ["scripts*", "training*", "rag*", "api*"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
