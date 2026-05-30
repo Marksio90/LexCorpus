@@ -249,10 +249,11 @@ export default function LandingPage() {
             <span>LexCorpus — Polski AI Prawny</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/ask"     className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Pytaj AI</Link>
-            <Link href="/search"  className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Szukaj</Link>
-            <Link href="/compare" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Porównaj</Link>
-            <Link href="/history" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Historia</Link>
+            <Link href="/ask"                    className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Pytaj AI</Link>
+            <Link href="/search"                 className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Szukaj</Link>
+            <Link href="/upgrade"                className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Cennik</Link>
+            <Link href="/regulamin"              className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Regulamin</Link>
+            <Link href="/polityka-prywatnosci"   className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Prywatność</Link>
           </div>
         </div>
       </footer>

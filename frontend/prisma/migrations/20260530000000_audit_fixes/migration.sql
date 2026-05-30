@@ -9,3 +9,6 @@ ALTER TABLE "WidgetConfig" ADD COLUMN "expiresAt" TIMESTAMP(3);
 
 -- CreateIndex: UsageLog.date (range queries)
 CREATE INDEX "UsageLog_date_idx" ON "UsageLog"("date" DESC);
+
+-- AddColumn: User.onboardingCompletedAt
+ALTER TABLE "User" ADD COLUMN "onboardingCompletedAt" TIMESTAMP(3);

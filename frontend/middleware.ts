@@ -2,7 +2,22 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function middleware() {
+  function middleware(req) {
+    const { pathname } = req.nextUrl;
+    const token = req.nextauth.token as Record<string, unknown> | null;
+
+    // Redirect new users (no onboarding) to /onboarding on first protected page visit
+    if (
+      token &&
+      !token.onboardingCompletedAt &&
+      pathname !== "/onboarding" &&
+      !pathname.startsWith("/api/")
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
     return NextResponse.next();
   },
   {

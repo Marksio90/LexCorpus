@@ -2,11 +2,43 @@ import type { Metadata } from "next";
 import { SessionProvider } from "@/components/SessionProvider";
 import "./globals.css";
 
+const BASE_URL = process.env.NEXTAUTH_URL || "https://lexcorpus.pl";
+
 export const metadata: Metadata = {
-  title: "LexCorpus — Polski AI Prawny",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "LexCorpus — Polski AI Prawny",
+    template: "%s — LexCorpus",
+  },
   description:
-    "System sztucznej inteligencji do odpowiadania na pytania prawne na podstawie polskich aktów prawnych z ISAP.",
-  keywords: ["prawo polskie", "AI", "akty prawne", "ISAP", "LexCorpus"],
+    "Odpowiedzi na pytania prawne z cytatami z ISAP, SAOS i EUR-Lex. AI przeszukuje 636 000 polskich dokumentów prawnych.",
+  keywords: [
+    "prawo polskie", "AI prawne", "akty prawne", "ISAP", "SAOS", "orzecznictwo",
+    "asystent prawny", "LexCorpus", "pytania prawne", "kodeks pracy", "VAT",
+  ],
+  authors: [{ name: "LexCorpus" }],
+  creator: "LexCorpus",
+  openGraph: {
+    type: "website",
+    locale: "pl_PL",
+    url: BASE_URL,
+    siteName: "LexCorpus",
+    title: "LexCorpus — Polski AI Prawny",
+    description: "AI przeszukuje 636 000 polskich dokumentów prawnych i odpowiada z cytatami.",
+  },
+  twitter: {
+    card: "summary",
+    title: "LexCorpus — Polski AI Prawny",
+    description: "AI przeszukuje 636 000 polskich dokumentów prawnych i odpowiada z cytatami.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
 };
 
 export default function RootLayout({

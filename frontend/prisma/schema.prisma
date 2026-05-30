@@ -48,6 +48,9 @@ model User {
   newsletterEnabled    Boolean   @default(true)
   newsletterLastSentAt DateTime?
 
+  // Onboarding
+  onboardingCompletedAt DateTime?
+
   // Subscription tier
   tier                 String    @default("free")   // "free" | "pro" | "kancelaria"
   tierExpiresAt        DateTime?
