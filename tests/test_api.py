@@ -46,9 +46,17 @@ def internal_headers():
     return {"X-Internal-Token": "test-secret", "Content-Type": "application/json"}
 
 
+# ── /ping ────────────────────────────────────────────────────────────────────
+
+def test_ping_returns_200(client):
+    resp = client.get("/ping")
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+
 # ── /health ───────────────────────────────────────────────────────────────────
 
-def test_health_returns_200(client):
+def test_health_returns_200_when_qdrant_ok(client):
     mock_retriever = MagicMock()
     mock_retriever.client.get_collection.return_value = MagicMock(
         status="green", vectors_count=1000, points_count=1000
@@ -56,7 +64,24 @@ def test_health_returns_200(client):
     with patch("api.dependencies.init_retriever", return_value=mock_retriever):
         resp = client.get("/health")
     assert resp.status_code == 200
-    assert "status" in resp.json()
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["qdrant_connected"] is True
+
+
+def test_health_returns_503_when_qdrant_down(client):
+    mock_retriever = MagicMock()
+    mock_retriever.client.get_collection.side_effect = Exception("connection refused")
+    # Patch both init_retriever and the global _retriever state
+    with (
+        patch("api.dependencies.init_retriever", return_value=mock_retriever),
+        patch("api.main.init_retriever", return_value=mock_retriever),
+    ):
+        resp = client.get("/health")
+    assert resp.status_code == 503
+    data = resp.json()
+    assert data["status"] == "degraded"
+    assert data["qdrant_connected"] is False
 
 
 # ── /search ───────────────────────────────────────────────────────────────────

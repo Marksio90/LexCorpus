@@ -106,9 +106,17 @@ async def root() -> dict:
         "ask": "POST /ask",
     }
 
+@app.get("/ping")
+async def ping() -> dict:
+    """Lightweight liveness probe — no external calls. Use this for uptime monitors."""
+    return {"ok": True}
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    """Full readiness check — verifies Qdrant connectivity and model state.
+    Returns HTTP 503 if critical dependencies are unavailable.
+    """
     qdrant_ok = False
     collection_count = None
     try:
@@ -122,14 +130,18 @@ async def health() -> HealthResponse:
     from api.dependencies import _retriever, _local_model
     embedding_loaded = _retriever is not None and getattr(_retriever, "_dense_model", None) is not None
 
-    log.info("Cache stats: %s", get_cache().stats())
-    return HealthResponse(
-        status="ok",
+    status = "ok" if qdrant_ok else "degraded"
+    response = HealthResponse(
+        status=status,
         qdrant_connected=qdrant_ok,
         model_loaded=_local_model is not None,
         embedding_model_loaded=embedding_loaded,
         collection_count=collection_count,
     )
+
+    if not qdrant_ok:
+        return JSONResponse(status_code=503, content=response.model_dump())
+    return response
 
 
 def start() -> None:
