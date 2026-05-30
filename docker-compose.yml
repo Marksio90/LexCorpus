@@ -58,10 +58,7 @@ services:
         elif ls /app/data/raw/saos_*.jsonl 1>/dev/null 2>&1; then
           echo 'SAOS data already exists — skipping fetch.';
         else
-          python scripts/fetch_saos.py
-            --year-from $$SAOS_YEAR_FROM
-            --year-to $$SAOS_YEAR_TO
-            --output /app/data/raw/;
+          python scripts/fetch_saos.py --year-from $$SAOS_YEAR_FROM --year-to $$SAOS_YEAR_TO --output /app/data/raw/;
         fi
       "
 
@@ -86,12 +83,7 @@ services:
         elif ls /app/data/raw/eurlex_*.jsonl 1>/dev/null 2>&1; then
           echo 'EUR-Lex data already exists — skipping fetch.';
         else
-          python scripts/fetch_eurlex.py
-            --year-from $$EURLEX_YEAR_FROM
-            --year-to $$EURLEX_YEAR_TO
-            --type $$EURLEX_TYPES
-            --max-acts $$EURLEX_MAX_ACTS
-            --output /app/data/raw/;
+          python scripts/fetch_eurlex.py --year-from $$EURLEX_YEAR_FROM --year-to $$EURLEX_YEAR_TO --type $$EURLEX_TYPES --max-acts $$EURLEX_MAX_ACTS --output /app/data/raw/;
         fi
       "
 
@@ -117,11 +109,7 @@ services:
         elif ls /app/data/raw/kis_*.jsonl 1>/dev/null 2>&1; then
           echo 'KIS data already exists — skipping fetch.';
         else
-          python scripts/fetch_kis.py
-            --year-from $$KIS_YEAR_FROM
-            --year-to $$KIS_YEAR_TO
-            ${KIS_MAX_ITEMS:+--max-items $$KIS_MAX_ITEMS}
-            --output /app/data/raw/;
+          python scripts/fetch_kis.py --year-from $$KIS_YEAR_FROM --year-to $$KIS_YEAR_TO ${KIS_MAX_ITEMS:+--max-items $$KIS_MAX_ITEMS} --output /app/data/raw/;
         fi
       "
 
@@ -154,10 +142,7 @@ services:
             EXTRA_FLAGS='--parent-child';
             echo 'Parent-child chunking enabled.';
           fi;
-          python scripts/preprocess.py
-            --input /app/data/raw/
-            --output /app/data/processed/
-            $$EXTRA_FLAGS;
+          python scripts/preprocess.py --input /app/data/raw/ --output /app/data/processed/ $$EXTRA_FLAGS;
         fi
       "
 
@@ -371,14 +356,9 @@ services:
     restart: "no"
     command: >
       sh -c "
-        python scripts/fetch_saos.py
-          --since-date $$(date -d '7 days ago' +%Y-%m-%d)
-          --output /app/data/raw/
+        python scripts/fetch_saos.py --since-date $$(date -d '7 days ago' +%Y-%m-%d) --output /app/data/raw/
         && rm -f /app/data/qdrant/.ingested
-        && python rag/ingest.py
-          --input /app/data/processed/chunks.jsonl
-          --qdrant http://qdrant:6333
-          --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
+        && python rag/ingest.py --input /app/data/processed/chunks.jsonl --qdrant http://qdrant:6333 --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
         && touch /app/data/qdrant/.ingested
       "
     depends_on:
