@@ -239,7 +239,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
-      - EMBED_QUERY_PREFIX=${EMBED_QUERY_PREFIX:-[query]: }
+      - "EMBED_QUERY_PREFIX=${EMBED_QUERY_PREFIX:-[query]: }"
       - RERANK_MODEL=${RERANK_MODEL:-sdadas/polish-reranker-large-ranknet}
       - RERANK_ENABLED=${RERANK_ENABLED:-true}
       - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
