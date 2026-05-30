@@ -38,7 +38,7 @@ def client():
 
 @pytest.fixture(autouse=True)
 def mock_internal_secret(monkeypatch):
-    monkeypatch.setattr("api.main.INTERNAL_API_SECRET", "test-secret")
+    monkeypatch.setattr("api.dependencies.INTERNAL_API_SECRET", "test-secret")
 
 
 @pytest.fixture()
@@ -53,7 +53,7 @@ def test_health_returns_200(client):
     mock_retriever.client.get_collection.return_value = MagicMock(
         status="green", vectors_count=1000, points_count=1000
     )
-    with patch("api.main._init_retriever", return_value=mock_retriever):
+    with patch("api.dependencies.init_retriever", return_value=mock_retriever):
         resp = client.get("/health")
     assert resp.status_code == 200
     assert "status" in resp.json()
@@ -70,8 +70,8 @@ def test_search_with_internal_token(client, internal_headers):
         return chunks
 
     with (
-        patch("api.main._init_retriever", return_value=mock_retriever),
-        patch("api.main.asyncio.to_thread", side_effect=fake_thread),
+        patch("api.dependencies.init_retriever", return_value=mock_retriever),
+        patch("api.routers.ask.asyncio.to_thread", side_effect=fake_thread),
     ):
         resp = client.post(
             "/search",
@@ -116,8 +116,8 @@ def test_ask_returns_answer(client, internal_headers):
         return ("Odpowiedź testowa.", "gpt-4o-mini")
 
     with (
-        patch("api.main._init_retriever", return_value=mock_retriever),
-        patch("api.main.asyncio.to_thread", side_effect=fake_thread),
+        patch("api.dependencies.init_retriever", return_value=mock_retriever),
+        patch("api.routers.ask.asyncio.to_thread", side_effect=fake_thread),
     ):
         resp = client.post(
             "/ask",
@@ -164,8 +164,8 @@ def test_ask_schema_has_temporal_fields(client, internal_headers):
         return ("Odpowiedź.", "gpt-4o-mini")
 
     with (
-        patch("api.main._init_retriever", return_value=mock_retriever),
-        patch("api.main.asyncio.to_thread", side_effect=fake_thread),
+        patch("api.dependencies.init_retriever", return_value=mock_retriever),
+        patch("api.routers.ask.asyncio.to_thread", side_effect=fake_thread),
     ):
         resp = client.post(
             "/ask",
@@ -202,30 +202,32 @@ def test_rate_limit_in_process_fallback():
 
 
 def test_is_internal_request_valid(monkeypatch):
-    from api.main import _is_internal_request
+    from api.dependencies import is_internal_request as _is_internal_request
     from fastapi import Request
 
-    monkeypatch.setattr("api.main.INTERNAL_API_SECRET", "moj-sekret")
+    import api.dependencies as _deps
+    monkeypatch.setattr(_deps, "INTERNAL_API_SECRET", "moj-sekret")
     mock_req = MagicMock(spec=Request)
     mock_req.headers = {"X-Internal-Token": "moj-sekret"}
     assert _is_internal_request(mock_req) is True
 
 
 def test_is_internal_request_wrong_token(monkeypatch):
-    from api.main import _is_internal_request
+    from api.dependencies import is_internal_request as _is_internal_request
     from fastapi import Request
 
-    monkeypatch.setattr("api.main.INTERNAL_API_SECRET", "moj-sekret")
+    import api.dependencies as _deps
+    monkeypatch.setattr(_deps, "INTERNAL_API_SECRET", "moj-sekret")
     mock_req = MagicMock(spec=Request)
     mock_req.headers = {"X-Internal-Token": "zly-token"}
     assert _is_internal_request(mock_req) is False
 
 
 def test_is_internal_request_empty_secret(monkeypatch):
-    from api.main import _is_internal_request
+    from api.dependencies import is_internal_request as _is_internal_request
     from fastapi import Request
 
-    monkeypatch.setattr("api.main.INTERNAL_API_SECRET", "")
+    monkeypatch.setattr("api.dependencies.INTERNAL_API_SECRET", "")
     mock_req = MagicMock(spec=Request)
     mock_req.headers = {"X-Internal-Token": "cokolwiek"}
     assert _is_internal_request(mock_req) is False

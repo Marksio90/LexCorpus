@@ -373,6 +373,24 @@ def main() -> None:
     if cfg.get("merge", {}).get("merge_and_save", False):
         merge_and_save(trainer.model, tokenizer, cfg)
 
+    # Post-training evaluation on golden questions
+    eval_script = Path(__file__).parent.parent / "scripts" / "run_eval.py"
+    eval_questions = Path(__file__).parent.parent / "data" / "eval_questions.jsonl"
+    merged_dir = cfg.get("merge", {}).get("merged_output_dir")
+    if eval_script.exists() and eval_questions.exists() and merged_dir:
+        import subprocess
+        log.info("Running post-training evaluation …")
+        result = subprocess.run(
+            ["python", str(eval_script), "--no-llm"],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode == 0:
+            log.info("Evaluation complete:
+%s", result.stdout[-2000:])
+        else:
+            log.warning("Evaluation failed (non-blocking):
+%s", result.stderr[-1000:])
+
     log.info("All done.")
 
 

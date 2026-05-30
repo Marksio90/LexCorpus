@@ -169,7 +169,7 @@ services:
     environment:
       - QDRANT_PATH=http://qdrant:6333
       - QDRANT_COLLECTION=lexcorpus
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
     volumes:
       - ./data:/app/data
@@ -188,7 +188,7 @@ services:
           python rag/ingest.py
             --input /app/data/processed/chunks.jsonl
             --qdrant http://qdrant:6333
-            --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+            --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
             --recreate
           && touch \"$$SENTINEL\"
           && echo 'Ingest complete. Sentinel written.';
@@ -215,7 +215,11 @@ services:
     image: redis:7-alpine
     container_name: lexcorpus-redis
     restart: unless-stopped
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: >-
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -239,7 +243,7 @@ services:
       - RERANK_ENABLED=${RERANK_ENABLED:-true}
       - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
       - REDIS_URL=redis://redis:6379/0
@@ -312,7 +316,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
       - QDRANT_PATH=http://qdrant:6333
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
     depends_on:
       redis:
         condition: service_healthy
@@ -369,7 +373,7 @@ services:
         && python rag/ingest.py
           --input /app/data/processed/chunks.jsonl
           --qdrant http://qdrant:6333
-          --model ${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+          --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
         && touch /app/data/qdrant/.ingested
       "
     depends_on:

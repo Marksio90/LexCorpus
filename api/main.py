@@ -1,29 +1,16 @@
 """
 main.py — LexCorpus FastAPI application.
 
-Endpoints:
-    GET  /              — API info
-    GET  /health        — health check (Qdrant + model status)
-    POST /ask           — ask a legal question, get answer + source citations
-
-The /ask endpoint:
-  1. Retrieves top-k relevant legal chunks from Qdrant (RAG).
-  2. Formats a prompt with retrieved context.
-  3. Generates an answer using the local fine-tuned model if available,
-     falling back to Anthropic Claude API if not.
-
-Environment variables:
-    QDRANT_URL          — Qdrant server URL (default: http://localhost:6333)
-    QDRANT_API_KEY      — Qdrant API key (optional)
-    QDRANT_COLLECTION   — Collection name (default: lexcorpus)
-    LOCAL_MODEL_PATH    — Path to fine-tuned model (optional; enables local inference)
-    ANTHROPIC_API_KEY   — Claude API key (fallback when local model not available)
-    EMBEDDING_MODEL     — SentenceTransformer model name
+Endpoints are split across routers:
+    api/routers/ask.py     — POST /ask, POST /ask/stream
+    api/routers/search.py  — POST /search
+    api/routers/sync.py    — GET /sync/status, POST /sync/trigger, GET /stats
+    api/routers/private.py — POST /ask/private, DELETE /private-collection/{user_id}
+                             POST /internal/enqueue-document
 
 Usage:
     uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 """
-
 from __future__ import annotations
 
 import logging
@@ -32,282 +19,45 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
-import asyncio
-import functools
-import json
-import time
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
-from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorResponse,
-                         HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
-                         SourceDocument, StatsResponse, publisher_to_source_type)
+from api.schemas import ErrorResponse, HealthResponse
 from api.result_cache import get_cache
-from api.rate_limit import check_rate_limit
+from api.dependencies import (
+    init_retriever, init_local_model, init_openai,
+    QDRANT_COLLECTION, EMBEDDING_MODEL,
+)
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-# ── Configuration from environment ──────────────────────────────────────────
-QDRANT_PATH = os.getenv("QDRANT_PATH", "data/qdrant")  # local file path, or http://... for server
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lexcorpus")
-LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
-RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
-RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
-EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
-ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
-
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
-RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))
-INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
-
-
-def _is_internal_request(request: Request) -> bool:
-    """Zwraca True jeśli request pochodzi z Next.js proxy (weryfikacja sesji po stronie serwera)."""
-    token = request.headers.get("X-Internal-Token", "")
-    return bool(INTERNAL_API_SECRET and token == INTERNAL_API_SECRET)
-
-
-def _check_rate_limit(ip: str) -> None:
-    check_rate_limit(ip)
-
-def _compute_confidence(chunks: list) -> "AnswerConfidence":
-    """
-    Oblicza pewność odpowiedzi na podstawie score'ów pobranych chunków.
-
-    Algorytm:
-    - top_score:   najwyższy score (rerank lub dense) spośród chunków
-    - coverage:    ile z top-3 chunków przekracza próg 0.6
-    - score:       średnia ważona top_score (60%) + coverage (40%)
-    """
-    if not chunks:
-        return AnswerConfidence(
-            score=0.0, level="niska", n_sources=0, top_source_score=0.0,
-            explanation="Brak dokumentów — nie udało się znaleźć powiązanych przepisów.",
-        )
-
-    scores     = [c.score for c in chunks]
-    top_score  = max(scores)
-    threshold  = 0.60
-    supporting = sum(1 for s in scores[:3] if s >= threshold)
-    coverage   = supporting / min(3, len(scores))
-    combined   = round(top_score * 0.6 + coverage * 0.4, 3)
-
-    if combined >= 0.80:
-        level = "wysoka"
-        explanation = (
-            f"Odpowiedź oparta na {len(chunks)} źródłach o wysokiej trafności "
-            f"(najwyższy score: {top_score:.0%}). Można jej zaufać."
-        )
-    elif combined >= 0.60:
-        level = "średnia"
-        explanation = (
-            f"Znaleziono powiązane przepisy, ale pokrycie jest częściowe "
-            f"(score: {top_score:.0%}). Zalecana weryfikacja."
-        )
-    else:
-        level = "niska"
-        explanation = (
-            f"Dokumenty powiązane z pytaniem mają niski score ({top_score:.0%}). "
-            f"Odpowiedź może być niepełna — skonsultuj z prawnikiem."
-        )
-
-    return AnswerConfidence(
-        score=combined,
-        level=level,
-        n_sources=len(chunks),
-        top_source_score=round(top_score, 3),
-        explanation=explanation,
-    )
-
-
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-# ── API token auth (plan kancelaria) ─────────────────────────────────────────
-import hashlib
-
-_DATABASE_URL = os.getenv("DATABASE_URL", "")
-_pg_pool = None
-
-
-async def _get_pg_pool():
-    global _pg_pool
-    if _pg_pool is not None:
-        return _pg_pool
-    if not _DATABASE_URL:
-        return None
-    try:
-        import asyncpg
-        _pg_pool = await asyncpg.create_pool(_DATABASE_URL, min_size=2, max_size=10, command_timeout=5)
-        log.info("Połączono z PostgreSQL")
-    except Exception as exc:
-        log.warning("PostgreSQL niedostępny, weryfikacja tokenów wyłączona: %s", exc)
-        _pg_pool = None
-    return _pg_pool
-
-
-async def _verify_api_token(request: Request) -> str | None:
-    """
-    Sprawdza Bearer token z nagłówka Authorization.
-    Zwraca userId jeśli token jest ważny, None jeśli brak nagłówka.
-    Rzuca 401 jeśli token jest nieprawidłowy lub unieważniony.
-    """
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        return None
-    plain = auth[len("Bearer "):]
-    token_hash = hashlib.sha256(plain.encode()).hexdigest()
-    pool = await _get_pg_pool()
-    if pool is None:
-        raise HTTPException(status_code=503, detail="Baza danych niedostępna.")
-    try:
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                'SELECT id, "userId" FROM "ApiToken" WHERE "tokenHash"=$1 AND "revokedAt" IS NULL',
-                token_hash,
-            )
-            if row:
-                await conn.execute(
-                    'UPDATE "ApiToken" SET "lastUsedAt"=NOW(), "requestCount"="requestCount"+1 WHERE id=$1',
-                    row["id"],
-                )
-    except Exception as exc:
-        log.warning("Błąd weryfikacji tokenu API: %s", exc)
-        row = None
-    if row is None and plain:
-        raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
-    return row["userId"] if row else None
-
-# ── Global state (loaded once at startup) ────────────────────────────────────
-_retriever = None
-_local_model = None
-_local_tokenizer = None
-_openai_client = None
-
-
-def _init_retriever():
-    """Initialize the RAG retriever (lazy, called on first /ask)."""
-    global _retriever
-    if _retriever is not None:
-        return _retriever
-
-    from rag.retriever import LegalRetriever, _make_openai_expander, _make_hyde_expander
-
-    expander = None
-    if EXPAND_ENABLED and OPENAI_API_KEY:
-        expander = _make_openai_expander(OPENAI_API_KEY)
-        log.info("Query expansion enabled (gpt-4o-mini)")
-    elif EXPAND_ENABLED:
-        log.warning("EXPAND_ENABLED=true but OPENAI_API_KEY not set — expansion disabled")
-
-    hyde_expander = None
-    HYDE_ENABLED = os.getenv("HYDE_ENABLED", "true").lower() not in ("false", "0", "no")
-    if HYDE_ENABLED and OPENAI_API_KEY:
-        hyde_expander = _make_hyde_expander(OPENAI_API_KEY)
-        log.info("HyDE retrieval enabled (hypothetical document embedding)")
-
-    _retriever = LegalRetriever(
-        model_name=EMBEDDING_MODEL,
-        rerank_model_name=RERANK_MODEL,
-        collection=QDRANT_COLLECTION,
-        qdrant=QDRANT_PATH,
-        api_key=QDRANT_API_KEY,
-        rerank=RERANK_ENABLED,
-        query_expander=expander,
-        hyde_expander=hyde_expander,
-    )
-    log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
-    return _retriever
-
-
-def _init_local_model():
-    """Load the local fine-tuned model if LOCAL_MODEL_PATH is set."""
-    global _local_model, _local_tokenizer
-    if not LOCAL_MODEL_PATH:
-        return None, None
-    if _local_model is not None:
-        return _local_model, _local_tokenizer
-
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    log.info("Loading local model from %s …", LOCAL_MODEL_PATH)
-    try:
-        _local_tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
-        _local_model = AutoModelForCausalLM.from_pretrained(
-            LOCAL_MODEL_PATH,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-        _local_model.eval()
-        log.info("Local model loaded successfully")
-    except Exception as exc:
-        log.warning("Failed to load local model: %s", exc)
-        _local_model = None
-        _local_tokenizer = None
-
-    return _local_model, _local_tokenizer
-
-
-def _init_openai():
-    """Initialize the OpenAI client if API key is available."""
-    global _openai_client
-    if not OPENAI_API_KEY:
-        return None
-    if _openai_client is not None:
-        return _openai_client
-
-    from openai import OpenAI
-
-    _openai_client = OpenAI(api_key=OPENAI_API_KEY)
-    log.info("OpenAI client initialized (model: %s)", OPENAI_MODEL)
-    return _openai_client
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan: initialize resources at startup."""
     log.info("LexCorpus API starting …")
-    log.info("Warming up retriever at startup …")
     try:
-        _init_retriever()
+        init_retriever()
     except Exception as exc:
         log.warning("Retriever warmup failed (will retry on first request): %s", exc)
-
-    _init_local_model()
-    _init_openai()
-
-    # Start weekly SAOS sync scheduler
+    init_local_model()
+    init_openai()
     from api.sync import start_scheduler
     start_scheduler()
-
     log.info("LexCorpus API ready")
     yield
     log.info("LexCorpus API shutting down")
 
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="LexCorpus API",
-    description=(
-        "Polish Legal AI — answers legal questions using RAG over ISAP legal acts. "
-        "Fine-tuned on Bielik-7B-Instruct with QLoRA."
-    ),
-    version="0.1.0",
+    description="Polish Legal AI — RAG over ISAP legislation, SAOS judgments, EUR-Lex and KIS.",
+    version="0.2.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -317,8 +67,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Internal-Token"],
 )
 
 
@@ -331,102 +81,26 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
-# ── Prompt building ──────────────────────────────────────────────────────────
+# ── Include routers ────────────────────────────────────────────────────────────
+from api.routers.ask import router as ask_router
+from api.routers.search import router as search_router
+from api.routers.sync import router as sync_router
+from api.routers.private import router as private_router
 
-SYSTEM_PROMPT = (
-    "Jesteś ekspertem ds. polskiego prawa. Odpowiadasz na pytania prawne "
-    "na podstawie podanych przepisów prawa polskiego. "
-    "Udzielasz dokładnych, zwięzłych odpowiedzi w języku polskim. "
-    "Jeśli nie znasz odpowiedzi na podstawie podanych przepisów, mówisz o tym wprost. "
-    "Zawsze powołujesz się na konkretne artykuły i akty prawne używając znaczników [1], [2] itd. "
-    "odpowiadających numeracji podanych przepisów."
-)
-
-
-def build_prompt(question: str, context: str) -> str:
-    if context:
-        return (
-            "Na podstawie poniższych przepisów prawnych odpowiedz na pytanie. "
-            "Cytuj źródła używając numerów w nawiasach kwadratowych, np. [1], [2], "
-            "zgodnie z numeracją w sekcji PRZEPISY poniżej.\n\n"
-            f"PRZEPISY:\n{context}\n\n"
-            f"PYTANIE: {question}\n\n"
-            "ODPOWIEDŹ (powołuj się na [numer] przy każdym twierdzeniu):"
-        )
-    return f"PYTANIE: {question}\n\nODPOWIEDŹ:"
+app.include_router(ask_router)
+app.include_router(search_router)
+app.include_router(sync_router)
+app.include_router(private_router)
 
 
-def generate_with_local_model(prompt: str, max_new_tokens: int = 512) -> str:
-    """Generate answer using the local fine-tuned model."""
-    import torch
-
-    model, tokenizer = _local_model, _local_tokenizer
-    full_prompt = f"### Instrukcja:\n{SYSTEM_PROMPT}\n\n### Pytanie:\n{prompt}\n\n### Odpowiedź:\n"
-
-    inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=3000)
-    inputs = {k: v.to(model.device) for k, v in inputs.items()}
-
-    with torch.no_grad():
-        output_ids = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.3,
-            top_p=0.9,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-    input_len = inputs["input_ids"].shape[1]
-    generated_ids = output_ids[0][input_len:]
-    return tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
-
-
-def generate_with_openai(prompt: str) -> str:
-    """Generate answer using OpenAI API."""
-    client = _init_openai()
-    if client is None:
-        return (
-            "Przepraszam, nie mogę wygenerować odpowiedzi — brak skonfigurowanego modelu językowego. "
-            "Ustaw zmienną środowiskową LOCAL_MODEL_PATH lub OPENAI_API_KEY."
-        )
-
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        max_tokens=1024,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-    )
-    return response.choices[0].message.content.strip()
-
-
-def generate_answer(prompt: str) -> tuple[str, str]:
-    """
-    Generate an answer, preferring local model over Claude API.
-    Returns (answer_text, model_name_used).
-    """
-    if _local_model is not None:
-        try:
-            answer = generate_with_local_model(prompt)
-            return answer, LOCAL_MODEL_PATH or "local-model"
-        except Exception as exc:
-            log.warning("Local model inference failed, falling back to OpenAI: %s", exc)
-
-    answer = generate_with_openai(prompt)
-    return answer, OPENAI_MODEL
-
-
-# ── Endpoints ─────────────────────────────────────────────────────────────────
-
+# ── Utility endpoints ──────────────────────────────────────────────────────────
 
 @app.get("/", response_model=dict)
 async def root() -> dict:
-    """API information endpoint."""
     return {
         "name": "LexCorpus API",
-        "version": "0.1.0",
-        "description": "Polish Legal AI — RAG + fine-tuned model over ISAP legal acts",
+        "version": "0.2.0",
+        "description": "Polish Legal AI — RAG + fine-tuned model over Polish legal acts",
         "docs": "/docs",
         "health": "/health",
         "ask": "POST /ask",
@@ -435,520 +109,32 @@ async def root() -> dict:
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    """Health check endpoint — checks Qdrant connectivity and model status."""
     qdrant_ok = False
     collection_count = None
-
     try:
-        retriever = _init_retriever()
+        retriever = init_retriever()
         info = retriever.client.get_collection(QDRANT_COLLECTION)
         qdrant_ok = True
         collection_count = getattr(info, "points_count", None) or getattr(info, "vectors_count", None)
     except Exception as exc:
         log.warning("Qdrant health check failed: %s", exc)
 
-    model_loaded = _local_model is not None
-    embedding_loaded = _retriever is not None and _retriever._dense_model is not None
+    from api.dependencies import _retriever, _local_model
+    embedding_loaded = _retriever is not None and getattr(_retriever, "_dense_model", None) is not None
 
-    cache_stats = get_cache().stats()
-    log.info("Cache: %s", cache_stats)
-
+    log.info("Cache stats: %s", get_cache().stats())
     return HealthResponse(
         status="ok",
         qdrant_connected=qdrant_ok,
-        model_loaded=model_loaded,
+        model_loaded=_local_model is not None,
         embedding_model_loaded=embedding_loaded,
         collection_count=collection_count,
     )
 
 
-_INTERNAL_SECRET = os.getenv("NEWSLETTER_INTERNAL_SECRET", "")
-
-
-def _require_internal_secret(req: Request) -> None:
-    token = req.headers.get("x-internal-secret", "")
-    if not _INTERNAL_SECRET or token != _INTERNAL_SECRET:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-
-@app.get("/sync/status")
-async def sync_status(req: Request) -> dict:
-    """Return current auto-sync scheduler status (internal only)."""
-    _require_internal_secret(req)
-    from api.sync import get_status
-    return get_status()
-
-
-@app.post("/sync/trigger")
-async def sync_trigger(req: Request) -> dict:
-    """Manually trigger a SAOS sync (internal only)."""
-    _require_internal_secret(req)
-    _check_rate_limit(_client_ip(req))
-    from api.sync import trigger_sync
-    return trigger_sync()
-
-
-@app.get("/stats", response_model=StatsResponse)
-async def stats(req: Request) -> StatsResponse:
-    """Collection statistics broken down by source type (internal only)."""
-    _require_internal_secret(req)
-    from datetime import datetime, timezone
-    from qdrant_client.http import models as qmodels
-
-    retriever = _init_retriever()
-    client = retriever.client
-
-    publisher_map = {
-        "legislation":        "WDU",
-        "judgment_nsa":       "ADMINISTRATIVE",
-        "judgment_sn":        "SUPREME",
-        "judgment_tk":        "CONSTITUTIONAL_TRIBUNAL",
-        "judgment_common":    "COMMON",
-        "judgment_kio":       "NATIONAL_APPEAL_CHAMBER",
-        "tax_interpretation": "KIS",
-    }
-
-    counts: dict[str, int] = {}
-    for source_type, publisher in publisher_map.items():
-        try:
-            result = client.count(
-                collection_name=QDRANT_COLLECTION,
-                count_filter=qmodels.Filter(must=[
-                    qmodels.FieldCondition(
-                        key="publisher",
-                        match=qmodels.MatchValue(value=publisher),
-                    )
-                ]),
-                exact=False,
-            )
-            counts[source_type] = result.count
-        except Exception:
-            counts[source_type] = 0
-
-    total_chunks = sum(counts.values())
-    breakdown = SourceBreakdown(total=total_chunks, **counts)
-
-    # Read last ingest time from sentinel file mtime
-    last_ingest = None
-    sentinel = Path(QDRANT_PATH.replace("http://qdrant:6333", "/app/data/qdrant")
-                    if QDRANT_PATH.startswith("http") else QDRANT_PATH) / ".ingested"
-    if sentinel.exists():
-        mtime = sentinel.stat().st_mtime
-        last_ingest = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
-
-    return StatsResponse(
-        by_source=breakdown,
-        total_chunks=total_chunks,
-        collection_name=QDRANT_COLLECTION,
-        embedding_model=EMBEDDING_MODEL,
-        rerank_enabled=RERANK_ENABLED,
-        expand_enabled=EXPAND_ENABLED,
-        last_ingest=last_ingest,
-    )
-
-
-def _chunk_to_source(chunk) -> SourceDocument:
-    return SourceDocument(
-        score=chunk.score,
-        act_id=chunk.act_id,
-        title=chunk.title,
-        year=chunk.year,
-        publisher=chunk.publisher,
-        source_type=publisher_to_source_type(chunk.publisher),
-        pos=chunk.pos,
-        url=chunk.url,
-        chunk_index=chunk.chunk_index,
-        total_chunks=chunk.total_chunks,
-        text=chunk.text[:500] + ("…" if len(chunk.text) > 500 else ""),
-        citation=chunk.citation(),
-    )
-
-
-@app.post("/search", response_model=SearchResponse)
-async def search(request: SearchRequest, req: Request) -> SearchResponse:
-    """Pure semantic search — returns relevant chunks without LLM generation.
-    Useful for lawyers who want to browse source documents directly."""
-    if not _is_internal_request(req) and not await _verify_api_token(req):
-        _check_rate_limit(_client_ip(req))
-    retriever = _init_retriever()
-    publisher_filter = request.publisher_filter
-    if not publisher_filter and request.source_type_filter:
-        # Map source_type back to publisher for Qdrant filter
-        reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
-                   "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                   "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
-        publisher_filter = reverse.get(request.source_type_filter)
-
-    chunks = await asyncio.to_thread(functools.partial(
-        retriever.retrieve,
-        query=request.query,
-        top_k=request.top_k,
-        year_filter=request.year_filter,
-        year_from=request.year_from,
-        year_to=request.year_to,
-        publisher_filter=publisher_filter,
-        source_type_filter=request.source_type_filter,
-        exclude_repealed=request.exclude_repealed,
-        as_of_year=request.as_of_year,
-    ))
-    return SearchResponse(
-        query=request.query,
-        results=[_chunk_to_source(c) for c in chunks],
-        total=len(chunks),
-    )
-
-
-@app.post("/ask", response_model=AskResponse)
-async def ask(request: AskRequest, req: Request) -> AskResponse:
-    """
-    Answer a Polish legal question.
-
-    Retrieves relevant passages from the ISAP legal corpus (Qdrant),
-    then generates an answer using the local fine-tuned model or Claude API.
-    Returns the answer along with source citations.
-    Accepts Bearer token (plan kancelaria) or falls back to IP rate-limit.
-    """
-    if not _is_internal_request(req) and not await _verify_api_token(req):
-        _check_rate_limit(_client_ip(req))
-    question = request.question.strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="Question must not be empty")
-
-    log.info("Received question: %s", question[:120])
-
-    # Check semantic result cache (only for non-streaming /ask)
-    _cache = get_cache()
-    cached = _cache.get(question, request.source_type_filter, request.top_k)
-    if cached is not None:
-        log.info("Cache HIT — returning cached response")
-        return JSONResponse(cached)
-
-    # Step 1: Retrieve relevant chunks via RAG
-    retrieved_chunks = []
-    context_str = ""
-    retrieval_used = False
-
-    if request.use_rag:
-        try:
-            retriever = _init_retriever()
-            publisher_filter = request.publisher_filter
-            if not publisher_filter and request.source_type_filter:
-                reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
-                           "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                           "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
-                publisher_filter = reverse.get(request.source_type_filter)
-            chunks = await asyncio.to_thread(functools.partial(
-                retriever.retrieve,
-                query=question,
-                top_k=request.top_k,
-                year_filter=request.year_filter,
-                year_from=request.year_from,
-                year_to=request.year_to,
-                publisher_filter=publisher_filter,
-                source_type_filter=request.source_type_filter,
-                exclude_repealed=request.exclude_repealed,
-                as_of_year=request.as_of_year,
-            ))
-            context_str = retriever.format_context(chunks, max_chars=8000)
-            retrieved_chunks = chunks
-            retrieval_used = True
-            log.info("Retrieved %d chunks (top score: %.4f)", len(chunks), chunks[0].score if chunks else 0.0)
-        except Exception as exc:
-            log.warning("RAG retrieval failed, proceeding without context: %s", exc)
-
-    # Step 2: Build prompt and generate answer
-    prompt = build_prompt(question, context_str)
-
-    # If history is provided, use OpenAI directly with multi-turn messages
-    if request.history and OPENAI_API_KEY:
-        try:
-            import openai as _openai
-            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
-            msgs: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
-            for turn in request.history[-6:]:
-                role = turn.get("role", "user")
-                content = turn.get("content", "")
-                if role in ("user", "assistant") and content:
-                    msgs.append({"role": role, "content": content[:2000]})
-            msgs.append({"role": "user", "content": prompt})
-            completion = client.chat.completions.create(
-                model=OPENAI_MODEL,
-                max_tokens=1024,
-                messages=msgs,
-            )
-            answer = completion.choices[0].message.content.strip()
-            model_used = OPENAI_MODEL
-        except Exception as exc:
-            log.warning("Multi-turn /ask failed, falling back: %s", exc)
-            answer, model_used = await asyncio.to_thread(generate_answer, prompt)
-    else:
-        answer, model_used = await asyncio.to_thread(generate_answer, prompt)
-    log.info("Answer generated by: %s", model_used)
-
-    # Step 3: Build source documents for response
-    sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
-
-    response = AskResponse(
-        question=question,
-        answer=answer,
-        sources=sources,
-        model_used=model_used,
-        retrieval_used=retrieval_used,
-        confidence=_compute_confidence(retrieved_chunks),
-    )
-    result_dict = response.model_dump()
-    _cache.set(question, request.source_type_filter, request.top_k, result_dict)
-    return response
-
-
-@app.post("/ask/stream")
-async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
-    """
-    Streaming version of /ask using Server-Sent Events.
-
-    Event types:
-      data: {"type": "sources", "sources": [...], "retrieval_used": bool}
-      data: {"type": "delta",   "text": "..."}
-      data: {"type": "done",    "model_used": "..."}
-      data: {"type": "error",   "detail": "..."}
-    """
-    if not _is_internal_request(req) and not await _verify_api_token(req):
-        _check_rate_limit(_client_ip(req))
-    question = request.question.strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="Question must not be empty")
-
-    async def event_stream() -> AsyncGenerator[str, None]:
-        def sse(payload: dict) -> str:
-            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-
-        # Step 1: RAG retrieval (blocking, but fast)
-        retrieved_chunks = []
-        context_str = ""
-        retrieval_used = False
-
-        if request.use_rag:
-            try:
-                retriever = _init_retriever()
-                publisher_filter = request.publisher_filter
-                if not publisher_filter and request.source_type_filter:
-                    reverse = {"legislation": "WDU", "judgment_nsa": "ADMINISTRATIVE",
-                               "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
-                               "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
-                    publisher_filter = reverse.get(request.source_type_filter)
-                chunks = await asyncio.to_thread(functools.partial(
-                    retriever.retrieve,
-                    query=question,
-                    top_k=request.top_k,
-                    year_filter=request.year_filter,
-                    year_from=request.year_from,
-                    year_to=request.year_to,
-                    publisher_filter=publisher_filter,
-                    source_type_filter=request.source_type_filter,
-                    exclude_repealed=request.exclude_repealed,
-                    as_of_year=request.as_of_year,
-                ))
-                context_str = retriever.format_context(chunks, max_chars=8000)
-                retrieved_chunks = chunks
-                retrieval_used = True
-            except Exception as exc:
-                log.warning("RAG retrieval failed in stream: %s", exc)
-
-        sources = [_chunk_to_source(chunk) for chunk in retrieved_chunks]
-
-        # Emit sources immediately so the UI can show them while text streams
-        yield sse({"type": "sources", "sources": [s.model_dump() for s in sources], "retrieval_used": retrieval_used})
-
-        # Step 2: Stream the answer
-        prompt = build_prompt(question, context_str)
-        model_used = "unknown"
-
-        if not OPENAI_API_KEY:
-            yield sse({"type": "error", "detail": "OPENAI_API_KEY not set"})
-            return
-
-        try:
-            import openai as _openai
-            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
-            model_used = OPENAI_MODEL
-
-            messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
-            if request.history:
-                for turn in request.history[-6:]:
-                    role = turn.get("role", "user")
-                    content = turn.get("content", "")
-                    if role in ("user", "assistant") and content:
-                        messages.append({"role": role, "content": content[:2000]})
-            messages.append({"role": "user", "content": prompt})
-
-            stream = client.chat.completions.create(
-                model=OPENAI_MODEL,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=1500,
-                stream=True,
-                timeout=90,
-            )
-
-            deadline = time.time() + 90
-            for chunk in stream:
-                if time.time() > deadline:
-                    yield sse({"type": "error", "detail": "Generacja odpowiedzi przekroczyła limit czasu."})
-                    return
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield sse({"type": "delta", "text": delta})
-
-        except Exception as exc:
-            log.error("Streaming generation failed: %s", exc)
-            yield sse({"type": "error", "detail": "Błąd generowania odpowiedzi."})
-            return
-
-        confidence = _compute_confidence(retrieved_chunks)
-        yield sse({"type": "done", "model_used": model_used,
-                   "confidence": confidence.model_dump()})
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable nginx buffering
-        },
-    )
-
-
-@app.post("/internal/enqueue-document")
-async def enqueue_document(req: Request) -> dict:
-    """
-    Kolejkuje przetwarzanie prywatnego dokumentu przez Celery worker.
-    Wywoływany przez Next.js po zapisaniu pliku na dysk.
-    Wymaga X-Internal-Token.
-    """
-    if not _is_internal_request(req):
-        raise HTTPException(status_code=403, detail="Brak dostępu.")
-    body = await req.json()
-    doc_id    = body.get("doc_id")
-    user_id   = body.get("user_id")
-    file_path = body.get("file_path")
-    mime_type = body.get("mime_type", "application/octet-stream")
-    if not (doc_id and user_id and file_path):
-        raise HTTPException(status_code=422, detail="Wymagane: doc_id, user_id, file_path")
-    try:
-        from api.tasks import process_private_document
-        task = process_private_document.apply_async(
-            args=[doc_id, user_id, file_path, mime_type],
-            task_id=f"doc-{doc_id}",
-        )
-        log.info("Zakolejkowano task %s dla doc %s", task.id, doc_id)
-        return {"task_id": task.id, "status": "queued"}
-    except Exception as exc:
-        log.error("Błąd kolejkowania: %s", exc)
-        raise HTTPException(status_code=503, detail=f"Kolejka niedostępna: {exc}")
-
-
-@app.delete("/private-collection/{user_id}")
-async def delete_private_collection(user_id: str, req: Request) -> dict:
-    """Usuwa prywatną kolekcję Qdrant użytkownika."""
-    token_owner = await _verify_api_token(req)
-    if not token_owner:
-        raise HTTPException(status_code=401, detail="Wymagany token Bearer.")
-    if token_owner != user_id:
-        raise HTTPException(status_code=403, detail="Brak dostępu do tej kolekcji.")
-    collection = f"lexcorpus_private_{user_id}"
-    try:
-        retriever = _init_retriever()
-        retriever.client.delete_collection(collection)
-        log.info("Usunięto kolekcję %s", collection)
-    except Exception as e:
-        log.warning("Nie można usunąć kolekcji %s: %s", collection, e)
-    return {"ok": True}
-
-
-@app.post("/ask/private")
-async def ask_private(request: AskRequest, req: Request) -> AskResponse:
-    """
-    RAG po prywatnej kolekcji dokumentów + publicznym korpusie.
-    Wymaga Bearer tokenu lub sesji z planem Pro/Kancelaria.
-    """
-    user_id = await _verify_api_token(req)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Wymagany token API lub sesja.")
-
-    question = request.question.strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="Pytanie nie może być puste.")
-
-    retriever = _init_retriever()
-    private_collection = f"lexcorpus_private_{user_id}"
-    all_chunks = []
-
-    # Szukaj w publicznym korpusie
-    try:
-        public_chunks = await asyncio.to_thread(
-            retriever.retrieve, question, request.top_k or 5
-        )
-        all_chunks.extend(public_chunks)
-    except Exception as e:
-        log.warning("Błąd retrieval publiczny: %s", e)
-
-    # Szukaj w prywatnej kolekcji
-    try:
-        from qdrant_client.http import models as qmodels
-        query_vec = retriever.embed_query(question)
-        priv_results = retriever.client.search(
-            collection_name=private_collection,
-            query_vector=query_vec,
-            limit=5,
-            with_payload=True,
-        )
-        for r in priv_results:
-            from rag.retriever import RetrievedChunk
-            chunk = RetrievedChunk(
-                act_id=r.payload.get("doc_id", "private"),
-                chunk_index=r.payload.get("chunk_index", 0),
-                title=f"[Prywatny dokument]",
-                year=None, publisher="PRIVATE",
-                source_type="private",
-                text=r.payload.get("text", ""),
-                score=r.score, url=None,
-                total_chunks=1,
-            )
-            all_chunks.append(chunk)
-    except Exception as e:
-        log.debug("Brak prywatnej kolekcji lub błąd: %s", e)
-
-    # Rerank all combined
-    if retriever.use_rerank and all_chunks:
-        all_chunks = retriever._rerank(question, all_chunks)
-
-    context_str = retriever.format_context(all_chunks[:8], max_chars=8000)
-    prompt      = build_prompt(question, context_str)
-    answer, model_used = await asyncio.to_thread(generate_answer, prompt)
-    sources = [_chunk_to_source(c) for c in all_chunks[:8]]
-
-    return AskResponse(
-        question=question,
-        answer=answer,
-        sources=sources,
-        model_used=model_used,
-        retrieval_used=True,
-        confidence=_compute_confidence(all_chunks[:8]),
-    )
-
-
 def start() -> None:
-    """Entry point for the lexcorpus-api console script."""
     import uvicorn
-
-    uvicorn.run(
-        "api.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
-        log_level="info",
-    )
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=False, log_level="info")
 
 
 if __name__ == "__main__":

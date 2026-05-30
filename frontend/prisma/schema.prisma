@@ -182,11 +182,13 @@ model PrivateDocument {
   chunkCount   Int      @default(0)
   uploadedAt   DateTime @default(now())
   processedAt  DateTime?
+  deletedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([uploadedAt(sort: Desc)])
+  @@index([deletedAt])
 }
 
 // ── Shareable reports ─────────────────────────────────────────────────────────
@@ -220,6 +222,7 @@ model WidgetConfig {
   requestCount   Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  expiresAt      DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -274,4 +277,5 @@ model UsageLog {
 
   @@unique([userId, date])
   @@index([userId])
+  @@index([date(sort: Desc)])
 }

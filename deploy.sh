@@ -72,11 +72,15 @@ cd "$REPO_DIR"
 
 # ── 4. Write .env ──────────────────────────────────────────────────────────────
 info "Writing .env…"
+if [[ -f .env ]]; then
+    warn ".env already exists — backing up to .env.bak and regenerating…"
+    cp .env .env.bak
+fi
 cat > .env <<EOF
 DOMAIN=${DOMAIN}
 OPENAI_API_KEY=${OPENAI_API_KEY}
 OPENAI_MODEL=gpt-4o-mini
-EMBEDDING_MODEL=paraphrase-multilingual-MiniLM-L12-v2
+EMBEDDING_MODEL=sdadas/mmlw-retrieval-roberta-large
 RERANK_ENABLED=true
 EXPAND_ENABLED=true
 QDRANT_COLLECTION=lexcorpus
