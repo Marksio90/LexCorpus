@@ -32,17 +32,19 @@ read -rp "OpenAI API key: " OPENAI_API_KEY
 
 read -rp "Admin emails (comma-separated, leave empty to allow all): " ADMIN_EMAILS
 
-read -rp "Email SMTP host (e.g. smtp.resend.com — REQUIRED for magic link auth): " EMAIL_HOST
-EMAIL_USER=""
-EMAIL_PASS=""
+echo ""
+echo "  Dostawca email: resend.com (3 000 maili/mies. za darmo)"
+echo "  1. Zarejestruj się na resend.com"
+echo "  2. Domains → Add Domain → zweryfikuj ${DOMAIN}"
+echo "  3. API Keys → Create API Key → skopiuj klucz re_..."
+echo ""
+read -rsp "Resend API Key (re_...): " RESEND_API_KEY; echo
+EMAIL_HOST="smtp.resend.com"
+EMAIL_USER="resend"
+EMAIL_PASS="${RESEND_API_KEY}"
 EMAIL_FROM="noreply@${DOMAIN}"
-if [[ -n "$EMAIL_HOST" ]]; then
-    read -rp "SMTP user: " EMAIL_USER
-    read -rsp "SMTP password: " EMAIL_PASS; echo
-    read -rp "From address [noreply@${DOMAIN}]: " EMAIL_FROM_INPUT
-    EMAIL_FROM="${EMAIL_FROM_INPUT:-$EMAIL_FROM}"
-else
-    warn "No SMTP configured — users CANNOT log in without email delivery!"
+if [[ -z "$RESEND_API_KEY" ]]; then
+    warn "Brak klucza Resend — użytkownicy NIE mogą się zalogować (magic link wymaga emaila)!"
 fi
 
 echo ""
