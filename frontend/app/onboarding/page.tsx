@@ -10,7 +10,7 @@ const STEPS = [
     title: "Witaj w LexCorpus",
     description:
       "Jesteś połączony z bazą 636 000 polskich dokumentów prawnych — ustaw i orzecznictwa.",
-    hint: "Zadaj pytanie po polsku, np. „Jakie są prawa pracownika przy zwolnieniu?"",
+    hint: 'Zadaj pytanie po polsku, np. „Jakie są prawa pracownika przy zwolnieniu?”',
   },
   {
     icon: "🔍",
