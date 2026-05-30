@@ -649,11 +649,19 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
 
 
 def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
-    """Return a query expansion function backed by OpenAI gpt-4o-mini."""
+    """Return a query expansion function backed by OpenAI gpt-4o-mini.
+
+    Uses Structured Outputs (JSON schema) to guarantee a validated list of
+    strings — eliminates brittle splitlines() parsing of free-form text.
+    """
     try:
         import openai
+        from pydantic import BaseModel
     except ImportError:
-        raise RuntimeError("openai package required for query expansion: pip install openai")
+        raise RuntimeError("openai and pydantic packages required for query expansion")
+
+    class _Expansions(BaseModel):
+        alternatives: list[str]
 
     client = openai.OpenAI(api_key=api_key)
     _expansion_cache: dict[str, list[str]] = {}
@@ -663,22 +671,38 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
         if cache_key in _expansion_cache:
             return _expansion_cache[cache_key]
         system = (
-            "Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
+            f"Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
             "podanego pytania prawnego w języku polskim, używając różnych słów kluczowych "
-            "i terminologii prawnej. Zwróć TYLKO listę alternatyw, po jednym na linię, "
-            "bez numeracji i bez oryginalnego pytania."
-        ).format(n=n)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": query},
-            ],
-            temperature=0.3,
-            max_tokens=200,
+            "i terminologii prawnej. Nie powtarzaj oryginalnego pytania."
         )
-        lines = response.choices[0].message.content.strip().splitlines()
-        result = [l.strip() for l in lines if l.strip()][:n]
+        try:
+            response = client.beta.structured_outputs.parse(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": query},
+                ],
+                response_format=_Expansions,
+                temperature=0.3,
+                max_tokens=300,
+            )
+            result = [s.strip() for s in response.alternatives if s.strip()][:n]
+        except Exception as exc:
+            log.warning("Structured query expansion failed, falling back to plain text: %s", exc)
+            try:
+                plain = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": query},
+                    ],
+                    temperature=0.3,
+                    max_tokens=300,
+                )
+                lines = plain.choices[0].message.content.strip().splitlines()
+                result = [l.strip().lstrip("0123456789.-) ") for l in lines if l.strip()][:n]
+            except Exception:
+                result = []
         _expansion_cache[cache_key] = result
         return result
 
