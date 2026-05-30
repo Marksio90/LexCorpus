@@ -5,6 +5,9 @@
 model:
   base_model_id: "speakleash/Bielik-7B-Instruct-v0.1"
   fallback_model_id: "mistralai/Mistral-7B-Instruct-v0.3"
+  # Bezpieczeństwo: trening na modelu zastępczym produkuje wagi niekompatybilne
+  # z deploymentem. Ustaw na true TYLKO gdy świadomie akceptujesz to ryzyko.
+  allow_fallback: false
   torch_dtype: "float16"          # use bfloat16 on Ampere+ GPUs
   trust_remote_code: true
 

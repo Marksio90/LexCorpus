@@ -128,7 +128,7 @@ def list_acts_for_year(
     return acts
 
 
-def _extract_pdf_text(pdf_bytes: bytes) -> str:
+def _extract_pdf_text(pdf_bytes: bytes, eli: str = "") -> str:
     """Extract plain text from a digital PDF using pymupdf."""
     try:
         import pymupdf  # type: ignore
@@ -141,7 +141,7 @@ def _extract_pdf_text(pdf_bytes: bytes) -> str:
         doc.close()
         return "\n".join(pages)
     except Exception as exc:
-        log.debug("PDF extraction failed: %s", exc)
+        log.warning("PDF extraction failed for ELI '%s': %s — chunk will be ingested without text", eli, exc)
         return ""
 
 
@@ -162,7 +162,7 @@ def fetch_act_text(client: httpx.Client, act: dict) -> str:
         pdf_headers = {**HEADERS, "Accept": "application/pdf"}
         response = fetch_with_backoff(client, url, headers=pdf_headers)
         if response is not None and response.content:
-            text = _extract_pdf_text(response.content)
+            text = _extract_pdf_text(response.content, eli=eli)
             if text.strip():
                 return text
 

@@ -805,6 +805,9 @@ def _route_query(query: str) -> str | None:
     return None  # ambiguous — search everything
 
 
+_CACHE_MAX_SIZE = 512  # max entries per in-process cache (unbounded growth prevention)
+
+
 def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
     """Return function that generates a hypothetical legal document passage for HyDE retrieval."""
     try:
@@ -813,11 +816,12 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
         raise RuntimeError("openai package required")
 
     client = openai.OpenAI(api_key=api_key)
-    _hyde_cache: dict[str, str] = {}
+    _hyde_cache: OrderedDict[str, str] = OrderedDict()
 
     def generate_hypothesis(query: str) -> str:
         key = hashlib.md5(query.encode()).hexdigest()
         if key in _hyde_cache:
+            _hyde_cache.move_to_end(key)
             return _hyde_cache[key]
         try:
             resp = client.chat.completions.create(
@@ -842,6 +846,8 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
         except Exception:
             result = query  # fallback: use original query
         _hyde_cache[key] = result
+        if len(_hyde_cache) > _CACHE_MAX_SIZE:
+            _hyde_cache.popitem(last=False)  # evict LRU entry
         return result
 
     return generate_hypothesis
@@ -863,11 +869,12 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
         alternatives: list[str]
 
     client = openai.OpenAI(api_key=api_key)
-    _expansion_cache: dict[str, list[str]] = {}
+    _expansion_cache: OrderedDict[str, list[str]] = OrderedDict()
 
     def expand(query: str, n: int) -> list[str]:
         cache_key = hashlib.md5(f"{query}:{n}".encode()).hexdigest()
         if cache_key in _expansion_cache:
+            _expansion_cache.move_to_end(cache_key)
             return _expansion_cache[cache_key]
         system = (
             f"Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
@@ -903,6 +910,8 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
             except Exception:
                 result = []
         _expansion_cache[cache_key] = result
+        if len(_expansion_cache) > _CACHE_MAX_SIZE:
+            _expansion_cache.popitem(last=False)  # evict LRU entry
         return result
 
     return expand
