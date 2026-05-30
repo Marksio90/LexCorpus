@@ -69,6 +69,14 @@ ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",
 
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
 RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))
+INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
+
+
+def _is_internal_request(request: Request) -> bool:
+    """Zwraca True jeśli request pochodzi z Next.js proxy (weryfikacja sesji po stronie serwera)."""
+    token = request.headers.get("X-Internal-Token", "")
+    return bool(INTERNAL_API_SECRET and token == INTERNAL_API_SECRET)
+
 
 def _check_rate_limit(ip: str) -> None:
     check_rate_limit(ip)
@@ -561,7 +569,7 @@ def _chunk_to_source(chunk) -> SourceDocument:
 async def search(request: SearchRequest, req: Request) -> SearchResponse:
     """Pure semantic search — returns relevant chunks without LLM generation.
     Useful for lawyers who want to browse source documents directly."""
-    if not await _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     retriever = _init_retriever()
     publisher_filter = request.publisher_filter
@@ -601,7 +609,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
     Returns the answer along with source citations.
     Accepts Bearer token (plan kancelaria) or falls back to IP rate-limit.
     """
-    if not await _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
@@ -705,7 +713,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
       data: {"type": "done",    "model_used": "..."}
       data: {"type": "error",   "detail": "..."}
     """
-    if not await _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:

@@ -244,6 +244,7 @@ services:
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET:?INTERNAL_API_SECRET is required}
       - SYNC_ENABLED=${SYNC_ENABLED:-true}
       - SYNC_CRON=${SYNC_CRON:-0 3 * * 0}
       - SYNC_SINCE_DAYS=${SYNC_SINCE_DAYS:-8}
@@ -289,6 +290,8 @@ services:
       - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
       - STRIPE_PRICE_KANCELARIA=${STRIPE_PRICE_KANCELARIA:-}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
+      - BACKEND_URL=http://api:8000
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET:?INTERNAL_API_SECRET is required}
     depends_on:
       api:
         condition: service_healthy

@@ -1,6 +1,9 @@
 import type { AskRequest, AskResponse, AnswerConfidence, ConversationTurn, HealthResponse, SearchRequest, SearchResponse, SourceDocument, StatsResponse, SyncStatus } from "./types";
 
+// Zapytania idą przez Next.js proxy (weryfikacja sesji server-side).
+// Endpointy publiczne (/health, /stats, /sync) nadal uderzają bezpośrednio w FastAPI.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const PROXY = "/api/proxy";
 
 export interface StreamCallbacks {
   onSources: (sources: SourceDocument[], retrievalUsed: boolean) => void;
@@ -27,7 +30,7 @@ export async function askQuestionStream(
     ...options,
   };
 
-  const res = await fetch(`${API_URL}/ask/stream`, {
+  const res = await fetch(`${PROXY}/ask/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -91,7 +94,7 @@ export async function askQuestion(
     ...options,
   };
 
-  const res = await fetch(`${API_URL}/ask`, {
+  const res = await fetch(`${PROXY}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -117,7 +120,7 @@ export async function searchDocuments(
   options?: Partial<Omit<SearchRequest, "query" | "top_k">>
 ): Promise<SearchResponse> {
   const body: SearchRequest = { query, top_k: topK, ...options };
-  const res = await fetch(`${API_URL}/search`, {
+  const res = await fetch(`${PROXY}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
