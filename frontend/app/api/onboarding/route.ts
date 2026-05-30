@@ -13,5 +13,15 @@ export async function POST() {
     data:  { onboardingCompletedAt: new Date() },
   });
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  // Set cookie so middleware can gate on onboarding without a DB lookup.
+  // httpOnly=false so Next.js middleware (Edge runtime) can read it too.
+  response.cookies.set("onboarding_done", "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+  });
+  return response;
 }

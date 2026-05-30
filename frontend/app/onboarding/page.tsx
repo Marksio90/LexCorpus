@@ -45,6 +45,15 @@ export default function OnboardingPage() {
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
+  // On mount: check if this user already completed onboarding (backfills cookie too).
+  // If done, skip straight to /ask.
+  useState(() => {
+    fetch("/api/onboarding/sync")
+      .then((r) => r.json())
+      .then(({ done }) => { if (done) router.replace("/ask"); })
+      .catch(() => {});
+  });
+
   async function finish() {
     await fetch("/api/onboarding", { method: "POST" }).catch(() => {});
     router.push("/ask");
