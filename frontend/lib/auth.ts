@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/welcome-email";
 
 const adminEmails = (process.env.ADMIN_EMAILS || "")
   .split(",")
@@ -41,12 +42,25 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async session({ session, user }) {
       if (session.user && user) {
-        const dbUser = user as typeof user & { tier?: string; id?: string };
-        session.user.id    = dbUser.id ?? "";
-        session.user.tier  = dbUser.tier ?? "free";
-        session.user.admin = isAdmin(user.email);
+        const dbUser = user as typeof user & {
+          tier?: string;
+          id?: string;
+          onboardingCompletedAt?: Date | null;
+        };
+        session.user.id                   = dbUser.id ?? "";
+        session.user.tier                 = dbUser.tier ?? "free";
+        session.user.admin                = isAdmin(user.email);
+        session.user.onboardingCompletedAt = dbUser.onboardingCompletedAt ?? null;
       }
       return session;
+    },
+  },
+
+  events: {
+    async createUser({ user }) {
+      if (user.email) {
+        await sendWelcomeEmail(user.email);
+      }
     },
   },
 

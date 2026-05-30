@@ -67,3 +67,8 @@ logs/
 # Temporary files
 *.tmp
 *.bak
+
+# SQLite databases (dev only — never commit)
+*.db
+*.db-shm
+*.db-wal

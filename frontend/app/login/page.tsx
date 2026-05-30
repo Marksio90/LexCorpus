@@ -96,9 +96,9 @@ function LoginForm() {
 
           <p className="mt-6 text-xs text-slate-400 dark:text-slate-500 text-center">
             Logując się, akceptujesz{" "}
-            <a href="#" className="underline hover:text-slate-600">regulamin</a>{" "}
+            <a href="/regulamin" className="underline hover:text-slate-600">regulamin</a>{" "}
             i{" "}
-            <a href="#" className="underline hover:text-slate-600">politykę prywatności</a>.
+            <a href="/polityka-prywatnosci" className="underline hover:text-slate-600">politykę prywatności</a>.
           </p>
         </>
       )}

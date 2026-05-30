@@ -25,6 +25,21 @@ log = logging.getLogger(__name__)
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+
+
+def _normalize_ip(ip: str) -> str:
+    """Collapse IPv6 addresses to /64 subnet to prevent trivial rotation bypasses."""
+    import ipaddress
+    try:
+        addr = ipaddress.ip_address(ip)
+        if isinstance(addr, ipaddress.IPv6Address):
+            # Rate-limit at /64 prefix (first 4 groups)
+            net = ipaddress.ip_network(f"{ip}/64", strict=False)
+            return str(net.network_address)
+    except ValueError:
+        pass
+    return ip
 
 _redis_client = None
 _redis_available = False
@@ -37,7 +52,12 @@ def _get_redis():
         return _redis_client if _redis_available else None
     try:
         import redis
-        client = redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=1)
+        url = REDIS_URL
+        if REDIS_PASSWORD:
+            from urllib.parse import urlparse, urlunparse
+            p = urlparse(url)
+            url = urlunparse(p._replace(netloc=f":{REDIS_PASSWORD}@{p.hostname}:{p.port or 6379}"))
+        client = redis.from_url(url, socket_connect_timeout=1, socket_timeout=1)
         client.ping()
         _redis_client = client
         _redis_available = True
@@ -87,6 +107,7 @@ def _check_fallback(ip: str) -> None:
 
 def check_rate_limit(ip: str) -> None:
     """Check rate limit for the given IP. Raises HTTP 429 if exceeded."""
+    ip = _normalize_ip(ip)
     client = _get_redis()
     if client is not None:
         try:

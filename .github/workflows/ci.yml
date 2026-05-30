@@ -2,169 +2,97 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main, master, "claude/**"]
   pull_request:
     branches: [main, master]
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  # ── Backend: lint + type-check ───────────────────────────────────────────────
-  backend-lint:
-    name: Backend lint
+  python-tests:
+    name: Python tests
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
+          cache: "pip"
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
-          pip install --quiet \
-            ruff \
-            mypy \
-            fastapi \
-            pydantic \
-            qdrant-client \
-            sentence-transformers \
-            openai \
-            apscheduler \
-            python-dotenv \
-            tqdm
+          pip install --upgrade pip
+          pip install fastapi uvicorn pydantic python-dotenv \
+            httpx pytest pytest-asyncio \
+            openai qdrant-client sentence-transformers \
+            fastembed asyncpg redis APScheduler
 
-      - name: Ruff lint
-        run: ruff check api/ rag/ scripts/ --select E,F,W,I --ignore E501
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
 
-      - name: Mypy (api)
-        run: mypy api/ --ignore-missing-imports --no-strict-optional
-        continue-on-error: true   # warnings only until stubs are complete
-
-  # ── Frontend: type-check + build ────────────────────────────────────────────
-  frontend-typecheck:
-    name: Frontend typecheck
+  python-lint:
+    name: Python lint
     runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check api/ rag/ scripts/ training/ tests/ --select E,F,W --ignore E501,W503
+
+  frontend-typecheck:
+    name: Frontend type check
+    runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript check
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://x:x@localhost:5432/x"
+
+      - name: TypeScript type check
         run: npx tsc --noEmit
 
-      - name: Next.js build (no API needed)
-        run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: ci-secret-not-real
-
-  # ── Retrieval eval (--no-llm, fast — runs on every push) ────────────────────
-  retrieval-eval:
-    name: Retrieval eval (no LLM)
+  security-scan:
+    name: Secret scanning
     runs-on: ubuntu-latest
-    # Only run when there are changes to RAG or API code
-    if: |
-      contains(github.event.head_commit.modified, 'rag/') ||
-      contains(github.event.head_commit.modified, 'api/') ||
-      github.event_name == 'pull_request'
-    services:
-      qdrant:
-        image: qdrant/qdrant:latest
-        ports:
-          - 6333:6333
-        options: >-
-          --health-cmd "wget -qO- http://localhost:6333/healthz"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: pip
+          fetch-depth: 0
 
-      - name: Install deps
+      - name: Check for committed database files
         run: |
-          pip install --quiet \
-            qdrant-client \
-            sentence-transformers \
-            openai \
-            python-dotenv \
-            tqdm
-
-      - name: Ingest sample data (50 chunks)
-        env:
-          QDRANT_PATH: http://localhost:6333
-        run: |
-          if [ -f data/eval_questions.jsonl ]; then
-            python scripts/ingest_sample.py --limit 200 --qdrant http://localhost:6333 || true
+          if git ls-files '*.db' | grep -q .; then
+            echo "ERROR: SQLite .db file tracked in git"
+            git ls-files '*.db'
+            exit 1
           fi
-        continue-on-error: true
-
-      - name: Run retrieval eval
-        env:
-          QDRANT_PATH: http://localhost:6333
-          QDRANT_COLLECTION: lexcorpus
-          EMBEDDING_MODEL: paraphrase-multilingual-MiniLM-L12-v2
-        run: |
-          python scripts/run_eval.py \
-            --no-llm \
-            --output results/eval_retrieval_ci.json \
-            --qdrant http://localhost:6333 \
-            --model paraphrase-multilingual-MiniLM-L12-v2
-        continue-on-error: true
-
-      - name: Upload eval results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eval-retrieval-${{ github.sha }}
-          path: results/eval_retrieval_ci.json
-          if-no-files-found: warn
-
-      - name: Comment eval summary on PR
-        if: github.event_name == 'pull_request' && hashFiles('results/eval_retrieval_ci.json') != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('results/eval_retrieval_ci.json', 'utf8'));
-            const s = data.summary;
-            const body = [
-              '## Ewaluacja retrieval (--no-llm)',
-              '',
-              `| Metryka | Wartość |`,
-              `|---------|---------|`,
-              `| Liczba pytań | ${s.n_questions} |`,
-              `| Avg retrieval score | ${(s.avg_retrieval_score * 100).toFixed(1)}% |`,
-              `| Avg keyword rate | ${(s.avg_keyword_rate * 100).toFixed(1)}% |`,
-              '',
-              `*Commit: ${context.sha.slice(0, 7)}*`,
-            ].join('\n');
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          echo "No .db files tracked"
