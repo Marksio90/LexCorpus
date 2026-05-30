@@ -17,7 +17,11 @@ RUN pip install --no-cache-dir \
     lxml \
     pydantic \
     pymupdf \
-    "apscheduler>=3.10"
+    "apscheduler>=3.10" \
+    redis \
+    asyncpg \
+    "celery[redis]" \
+    psycopg2-binary
 
 COPY . .
 

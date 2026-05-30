@@ -32,9 +32,10 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
+import asyncio
+import functools
 import json
 import time
-from collections import defaultdict
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -43,6 +44,7 @@ from api.schemas import (AskRequest, AskResponse, AnswerConfidence, ErrorRespons
                          HealthResponse, SearchRequest, SearchResponse, SourceBreakdown,
                          SourceDocument, StatsResponse, publisher_to_source_type)
 from api.result_cache import get_cache
+from api.rate_limit import check_rate_limit
 
 load_dotenv()
 
@@ -65,24 +67,19 @@ RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0
 EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 
-# ── Simple in-process rate limiter ───────────────────────────────────────────
-# Limits expensive /ask and /ask/stream endpoints per IP.
-_rate_buckets: dict[str, list[float]] = defaultdict(list)
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))   # max requests
-RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))   # per N seconds
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
+RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))
+INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
+
+
+def _is_internal_request(request: Request) -> bool:
+    """Zwraca True jeśli request pochodzi z Next.js proxy (weryfikacja sesji po stronie serwera)."""
+    token = request.headers.get("X-Internal-Token", "")
+    return bool(INTERNAL_API_SECRET and token == INTERNAL_API_SECRET)
+
 
 def _check_rate_limit(ip: str) -> None:
-    now = time.time()
-    window_start = now - RATE_LIMIT_WINDOW
-    bucket = _rate_buckets[ip]
-    # Drop old entries
-    _rate_buckets[ip] = [t for t in bucket if t > window_start]
-    if len(_rate_buckets[ip]) >= RATE_LIMIT_REQUESTS:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Zbyt wiele zapytań. Limit: {RATE_LIMIT_REQUESTS} na {RATE_LIMIT_WINDOW}s.",
-        )
-    _rate_buckets[ip].append(now)
+    check_rate_limit(ip)
 
 def _compute_confidence(chunks: list) -> "AnswerConfidence":
     """
@@ -142,42 +139,28 @@ def _client_ip(request: Request) -> str:
 
 # ── API token auth (plan kancelaria) ─────────────────────────────────────────
 import hashlib
-import sqlite3
-import threading
-from queue import Queue, Empty
 
-_DB_PATH = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
+_DATABASE_URL = os.getenv("DATABASE_URL", "")
+_pg_pool = None
 
-class _SqlitePool:
-    """Thread-safe SQLite connection pool to avoid per-request connect overhead."""
-    def __init__(self, db_path: str, size: int = 8) -> None:
-        self._pool: Queue = Queue(maxsize=size)
-        for _ in range(size):
-            conn = sqlite3.connect(db_path, timeout=10, check_same_thread=False)
-            conn.execute("PRAGMA journal_mode=WAL")
-            self._pool.put(conn)
 
-    def get(self) -> sqlite3.Connection:
-        try:
-            return self._pool.get(timeout=5)
-        except Empty:
-            raise RuntimeError("SQLite pool exhausted")
+async def _get_pg_pool():
+    global _pg_pool
+    if _pg_pool is not None:
+        return _pg_pool
+    if not _DATABASE_URL:
+        return None
+    try:
+        import asyncpg
+        _pg_pool = await asyncpg.create_pool(_DATABASE_URL, min_size=2, max_size=10, command_timeout=5)
+        log.info("Połączono z PostgreSQL")
+    except Exception as exc:
+        log.warning("PostgreSQL niedostępny, weryfikacja tokenów wyłączona: %s", exc)
+        _pg_pool = None
+    return _pg_pool
 
-    def put(self, conn: sqlite3.Connection) -> None:
-        self._pool.put(conn)
 
-_db_pool: _SqlitePool | None = None
-_db_pool_lock = threading.Lock()
-
-def _get_db_pool() -> _SqlitePool:
-    global _db_pool
-    if _db_pool is None:
-        with _db_pool_lock:
-            if _db_pool is None:
-                _db_pool = _SqlitePool(_DB_PATH)
-    return _db_pool
-
-def _verify_api_token(request: Request) -> str | None:
+async def _verify_api_token(request: Request) -> str | None:
     """
     Sprawdza Bearer token z nagłówka Authorization.
     Zwraca userId jeśli token jest ważny, None jeśli brak nagłówka.
@@ -188,28 +171,26 @@ def _verify_api_token(request: Request) -> str | None:
         return None
     plain = auth[len("Bearer "):]
     token_hash = hashlib.sha256(plain.encode()).hexdigest()
-    pool = _get_db_pool()
-    conn = pool.get()
-    row = None
+    pool = await _get_pg_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Baza danych niedostępna.")
     try:
-        row = conn.execute(
-            "SELECT id, userId FROM ApiToken WHERE tokenHash=? AND revokedAt IS NULL",
-            (token_hash,),
-        ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE ApiToken SET lastUsedAt=datetime('now'), requestCount=requestCount+1 WHERE id=?",
-                (row[0],),
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT id, "userId" FROM "ApiToken" WHERE "tokenHash"=$1 AND "revokedAt" IS NULL',
+                token_hash,
             )
-            conn.commit()
-    except Exception as e:
-        log.warning("Błąd weryfikacji tokenu API: %s", e)
+            if row:
+                await conn.execute(
+                    'UPDATE "ApiToken" SET "lastUsedAt"=NOW(), "requestCount"="requestCount"+1 WHERE id=$1',
+                    row["id"],
+                )
+    except Exception as exc:
+        log.warning("Błąd weryfikacji tokenu API: %s", exc)
         row = None
-    finally:
-        pool.put(conn)
     if row is None and plain:
         raise HTTPException(status_code=401, detail="Nieprawidłowy lub unieważniony token API.")
-    return row[1] if row else None
+    return row["userId"] if row else None
 
 # ── Global state (loaded once at startup) ────────────────────────────────────
 _retriever = None
@@ -588,7 +569,7 @@ def _chunk_to_source(chunk) -> SourceDocument:
 async def search(request: SearchRequest, req: Request) -> SearchResponse:
     """Pure semantic search — returns relevant chunks without LLM generation.
     Useful for lawyers who want to browse source documents directly."""
-    if not _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     retriever = _init_retriever()
     publisher_filter = request.publisher_filter
@@ -599,14 +580,18 @@ async def search(request: SearchRequest, req: Request) -> SearchResponse:
                    "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
         publisher_filter = reverse.get(request.source_type_filter)
 
-    chunks = retriever.retrieve(
+    chunks = await asyncio.to_thread(functools.partial(
+        retriever.retrieve,
         query=request.query,
         top_k=request.top_k,
         year_filter=request.year_filter,
         year_from=request.year_from,
         year_to=request.year_to,
         publisher_filter=publisher_filter,
-    )
+        source_type_filter=request.source_type_filter,
+        exclude_repealed=request.exclude_repealed,
+        as_of_year=request.as_of_year,
+    ))
     return SearchResponse(
         query=request.query,
         results=[_chunk_to_source(c) for c in chunks],
@@ -624,7 +609,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
     Returns the answer along with source citations.
     Accepts Bearer token (plan kancelaria) or falls back to IP rate-limit.
     """
-    if not _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
@@ -653,14 +638,18 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
                            "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
                            "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
                 publisher_filter = reverse.get(request.source_type_filter)
-            chunks = retriever.retrieve(
+            chunks = await asyncio.to_thread(functools.partial(
+                retriever.retrieve,
                 query=question,
                 top_k=request.top_k,
                 year_filter=request.year_filter,
                 year_from=request.year_from,
                 year_to=request.year_to,
                 publisher_filter=publisher_filter,
-            )
+                source_type_filter=request.source_type_filter,
+                exclude_repealed=request.exclude_repealed,
+                as_of_year=request.as_of_year,
+            ))
             context_str = retriever.format_context(chunks, max_chars=8000)
             retrieved_chunks = chunks
             retrieval_used = True
@@ -692,9 +681,9 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
             model_used = OPENAI_MODEL
         except Exception as exc:
             log.warning("Multi-turn /ask failed, falling back: %s", exc)
-            answer, model_used = generate_answer(prompt)
+            answer, model_used = await asyncio.to_thread(generate_answer, prompt)
     else:
-        answer, model_used = generate_answer(prompt)
+        answer, model_used = await asyncio.to_thread(generate_answer, prompt)
     log.info("Answer generated by: %s", model_used)
 
     # Step 3: Build source documents for response
@@ -724,7 +713,7 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
       data: {"type": "done",    "model_used": "..."}
       data: {"type": "error",   "detail": "..."}
     """
-    if not _verify_api_token(req):
+    if not _is_internal_request(req) and not await _verify_api_token(req):
         _check_rate_limit(_client_ip(req))
     question = request.question.strip()
     if not question:
@@ -748,14 +737,18 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
                                "judgment_sn": "SUPREME", "judgment_tk": "CONSTITUTIONAL_TRIBUNAL",
                                "judgment_common": "COMMON", "judgment_kio": "NATIONAL_APPEAL_CHAMBER", "tax_interpretation": "KIS"}
                     publisher_filter = reverse.get(request.source_type_filter)
-                chunks = retriever.retrieve(
+                chunks = await asyncio.to_thread(functools.partial(
+                    retriever.retrieve,
                     query=question,
                     top_k=request.top_k,
                     year_filter=request.year_filter,
                     year_from=request.year_from,
                     year_to=request.year_to,
                     publisher_filter=publisher_filter,
-                )
+                    source_type_filter=request.source_type_filter,
+                    exclude_repealed=request.exclude_repealed,
+                    as_of_year=request.as_of_year,
+                ))
                 context_str = retriever.format_context(chunks, max_chars=8000)
                 retrieved_chunks = chunks
                 retrieval_used = True
@@ -826,10 +819,39 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
     )
 
 
+@app.post("/internal/enqueue-document")
+async def enqueue_document(req: Request) -> dict:
+    """
+    Kolejkuje przetwarzanie prywatnego dokumentu przez Celery worker.
+    Wywoływany przez Next.js po zapisaniu pliku na dysk.
+    Wymaga X-Internal-Token.
+    """
+    if not _is_internal_request(req):
+        raise HTTPException(status_code=403, detail="Brak dostępu.")
+    body = await req.json()
+    doc_id    = body.get("doc_id")
+    user_id   = body.get("user_id")
+    file_path = body.get("file_path")
+    mime_type = body.get("mime_type", "application/octet-stream")
+    if not (doc_id and user_id and file_path):
+        raise HTTPException(status_code=422, detail="Wymagane: doc_id, user_id, file_path")
+    try:
+        from api.tasks import process_private_document
+        task = process_private_document.apply_async(
+            args=[doc_id, user_id, file_path, mime_type],
+            task_id=f"doc-{doc_id}",
+        )
+        log.info("Zakolejkowano task %s dla doc %s", task.id, doc_id)
+        return {"task_id": task.id, "status": "queued"}
+    except Exception as exc:
+        log.error("Błąd kolejkowania: %s", exc)
+        raise HTTPException(status_code=503, detail=f"Kolejka niedostępna: {exc}")
+
+
 @app.delete("/private-collection/{user_id}")
 async def delete_private_collection(user_id: str, req: Request) -> dict:
     """Usuwa prywatną kolekcję Qdrant użytkownika."""
-    token_owner = _verify_api_token(req)
+    token_owner = await _verify_api_token(req)
     if not token_owner:
         raise HTTPException(status_code=401, detail="Wymagany token Bearer.")
     if token_owner != user_id:
@@ -850,7 +872,7 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
     RAG po prywatnej kolekcji dokumentów + publicznym korpusie.
     Wymaga Bearer tokenu lub sesji z planem Pro/Kancelaria.
     """
-    user_id = _verify_api_token(req)
+    user_id = await _verify_api_token(req)
     if not user_id:
         raise HTTPException(status_code=401, detail="Wymagany token API lub sesja.")
 
@@ -864,7 +886,9 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
 
     # Szukaj w publicznym korpusie
     try:
-        public_chunks = retriever.retrieve(query=question, top_k=request.top_k or 5)
+        public_chunks = await asyncio.to_thread(
+            retriever.retrieve, question, request.top_k or 5
+        )
         all_chunks.extend(public_chunks)
     except Exception as e:
         log.warning("Błąd retrieval publiczny: %s", e)
@@ -901,7 +925,7 @@ async def ask_private(request: AskRequest, req: Request) -> AskResponse:
 
     context_str = retriever.format_context(all_chunks[:8], max_chars=8000)
     prompt      = build_prompt(question, context_str)
-    answer, model_used = generate_answer(prompt)
+    answer, model_used = await asyncio.to_thread(generate_answer, prompt)
     sources = [_chunk_to_source(c) for c in all_chunks[:8]]
 
     return AskResponse(

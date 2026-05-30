@@ -344,6 +344,7 @@ def _process_isap_record(record: dict, chunk_tokens: int, overlap_tokens: int) -
             "publisher": record.get("publisher", "WDU"),
             "pos": record.get("pos", ""),
             "url": record.get("url", ""),
+            "status": record.get("status", ""),
             "chunk_index": idx,
             "total_chunks": len(all_chunks),
             "text": chunk,

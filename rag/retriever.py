@@ -70,6 +70,8 @@ class RetrievedChunk:
     total_chunks: int
     parent_text: str = ""       # populated when parent-child chunking is used
     chunk_type: str = ""        # "child" | "parent" | "" (legacy)
+    is_repealed: bool = False
+    valid_from_year: int = 0
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -226,6 +228,8 @@ class LegalRetriever:
                 total_chunks=int(payload.get("total_chunks", 1)),
                 parent_text=payload.get("parent_text", ""),
                 chunk_type=payload.get("chunk_type", ""),
+                is_repealed=bool(payload.get("is_repealed", False)),
+                valid_from_year=int(payload.get("valid_from_year", 0)),
             ))
         return results
 
@@ -263,6 +267,8 @@ class LegalRetriever:
         rerank: bool | None = None,
         expand: bool | None = None,
         expand_context: bool = CONTEXT_EXPAND,
+        exclude_repealed: bool = True,
+        as_of_year: int | None = None,
     ) -> list[RetrievedChunk]:
         """
         Full pipeline: query expansion → hybrid search → dedup → cross-encoder re-rank.
@@ -277,6 +283,10 @@ class LegalRetriever:
             rerank: Override instance-level rerank setting for this call.
             expand: Override query expansion for this call (requires query_expander set).
             expand_context: Fetch neighboring chunks and merge into retrieved text.
+            exclude_repealed: Exclude repealed legislation (default True). Applies only
+                to legislation/tax source types; judgments are never excluded by this flag.
+            as_of_year: Filter legislation to acts published up to this year (inclusive).
+                Useful for "stan prawny na rok X" historical queries.
         """
         use_rerank = self.rerank if rerank is None else rerank
         use_expand = (expand is not False) and (self.query_expander is not None)
@@ -290,7 +300,30 @@ class LegalRetriever:
             except Exception as exc:
                 log.warning("HyDE generation failed, using original query: %s", exc)
 
+        _LEGISLATION_SOURCE_TYPES = {"legislation", "tax_interpretation"}
+
         filter_conditions: list[qmodels.FieldCondition] = []
+
+        # Temporal filters — applied only to legislation/tax (judgments are historical by nature)
+        is_legislation_query = (
+            source_type_filter in _LEGISLATION_SOURCE_TYPES
+            or source_type_filter is None  # may include legislation after auto-routing
+        )
+        if exclude_repealed and is_legislation_query:
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="is_repealed",
+                    match=qmodels.MatchValue(value=False),
+                )
+            )
+        if as_of_year is not None and is_legislation_query:
+            filter_conditions.append(
+                qmodels.FieldCondition(
+                    key="valid_from_year",
+                    range=qmodels.Range(lte=as_of_year),
+                )
+            )
+
         if year_filter:
             filter_conditions.append(
                 qmodels.FieldCondition(key="year", match=qmodels.MatchValue(value=str(year_filter)))
@@ -495,22 +528,61 @@ SOURCE_TYPE_TO_PUBLISHER = {
 
 
 _LEGISLATION_KEYWORDS = re.compile(
-    r"\b(ustawa|rozporządzenie|przepis|artykuł|paragraf|kodeks|dyrektywa|"
-    r"obowiązek|uprawnienie|definicja|wymóg|warunek|termin|kara|sankcja|"
-    r"ile dni|ile lat|jaki jest|co oznacza|co to jest)\b",
+    r"\b("
+    r"ustaw\w+"                    # ustawa, ustawy, ustawą, ustawie…
+    r"|rozporządzen\w+"            # rozporządzenie, rozporządzenia…
+    r"|przepis\w*"                 # przepis, przepisy, przepisów…
+    r"|artykuł\w*|art\."           # artykuł, artykułu, art.
+    r"|paragraf\w*|§"              # paragraf, paragrafu, §
+    r"|kodeks\w*"                  # kodeks, kodeksu, kodeksie…
+    r"|dyrektywa\w*|dyrektywie"    # dyrektywa, dyrektywy…
+    r"|obowiązek|obowiązk\w+"      # obowiązek, obowiązku, obowiązków…
+    r"|uprawni\w+"                 # uprawnienie, uprawnienia…
+    r"|definicj\w+"                # definicja, definicji…
+    r"|wymóg|wymogu|wymogi|wymogów"
+    r"|warunek|warunki|warunków|warunkiem"
+    r"|termin\w*"                  # termin, terminu, terminów…
+    r"|kara\w*|kary|karze|karą"    # kara, kary, karze…
+    r"|sankcj\w+"                  # sankcja, sankcji…
+    r"|ile dni|ile lat|jaki jest|co oznacza|co to jest"
+    r")\b",
     re.IGNORECASE,
 )
 _JUDGMENT_KEYWORDS = re.compile(
-    r"\b(wyrok|orzeczenie|sąd|sprawa|pozew|apelacja|kasacja|skarga|"
-    r"precedens|orzecznictwo|linia orzecznicza|NSA|SN|TK|WSA|KIO|"
-    r"jak orzekają|praktyka|czy sąd|czy można zaskarżyć)\b",
+    r"\b("
+    r"wyrok\w*"                    # wyrok, wyroki, wyroku, wyrokiem…
+    r"|orzeczen\w+"                # orzeczenie, orzeczenia, orzeczeniu…
+    r"|orzecznictw\w+"             # orzecznictwo, orzecznictwa…
+    r"|sąd\w*"                     # sąd, sądu, sądzie, sądów…
+    r"|spraw\w+"                   # sprawa, sprawy, sprawie, sprawą…
+    r"|pozew|pozwu|pozwie|pozwy"
+    r"|apelacj\w+"                 # apelacja, apelacji…
+    r"|kasacj\w+"                  # kasacja, kasacji…
+    r"|skarg\w+"                   # skarga, skargi, skargę, skargą…
+    r"|precedens\w*"               # precedens, precedensy…
+    r"|linia orzecznicza|linii orzeczniczej"
+    r"|NSA|SN|TK|WSA|KIO"
+    r"|jak orzekają|praktyka|czy sąd|czy można zaskarżyć"
+    r")\b",
     re.IGNORECASE,
 )
 _TAX_KEYWORDS = re.compile(
-    r"\b(interpretacja|KIS|podatek|VAT|PIT|CIT|akcyza|podatk\w+|"
-    r"urząd skarbowy|MF|ministerstwo finansów|organ podatkowy|"
-    r"deklaracja podatkowa|rozliczenie podatkowe|ulga podatkowa|"
-    r"zwolnienie z VAT|stawka VAT|faktura|korekta faktury)\b",
+    r"\b("
+    r"interpretacj\w+"             # interpretacja, interpretacji…
+    r"|KIS"
+    r"|podatek|podatku|podatki|podatków|podatkiem|podatk\w+"
+    r"|VAT|PIT|CIT|akcyz\w+"
+    r"|urząd skarbowy|urzędu skarbowego"
+    r"|MF|ministerstwo finansów|ministr\w+ finansów"
+    r"|organ\w* podatkow\w+"       # organ podatkowy, organu podatkowego…
+    r"|deklaracj\w+ podatkow\w+"
+    r"|rozliczen\w+ podatkow\w+"
+    r"|ulg\w+ podatkow\w+"
+    r"|zwolni\w+ z VAT|zwolnienie z VAT"
+    r"|stawka VAT|stawki VAT"
+    r"|faktur\w+"                  # faktura, faktury, fakturę…
+    r"|korekta faktury|korekt\w+ faktur\w+"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -577,11 +649,19 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
 
 
 def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
-    """Return a query expansion function backed by OpenAI gpt-4o-mini."""
+    """Return a query expansion function backed by OpenAI gpt-4o-mini.
+
+    Uses Structured Outputs (JSON schema) to guarantee a validated list of
+    strings — eliminates brittle splitlines() parsing of free-form text.
+    """
     try:
         import openai
+        from pydantic import BaseModel
     except ImportError:
-        raise RuntimeError("openai package required for query expansion: pip install openai")
+        raise RuntimeError("openai and pydantic packages required for query expansion")
+
+    class _Expansions(BaseModel):
+        alternatives: list[str]
 
     client = openai.OpenAI(api_key=api_key)
     _expansion_cache: dict[str, list[str]] = {}
@@ -591,22 +671,38 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
         if cache_key in _expansion_cache:
             return _expansion_cache[cache_key]
         system = (
-            "Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
+            f"Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
             "podanego pytania prawnego w języku polskim, używając różnych słów kluczowych "
-            "i terminologii prawnej. Zwróć TYLKO listę alternatyw, po jednym na linię, "
-            "bez numeracji i bez oryginalnego pytania."
-        ).format(n=n)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": query},
-            ],
-            temperature=0.3,
-            max_tokens=200,
+            "i terminologii prawnej. Nie powtarzaj oryginalnego pytania."
         )
-        lines = response.choices[0].message.content.strip().splitlines()
-        result = [l.strip() for l in lines if l.strip()][:n]
+        try:
+            response = client.beta.structured_outputs.parse(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": query},
+                ],
+                response_format=_Expansions,
+                temperature=0.3,
+                max_tokens=300,
+            )
+            result = [s.strip() for s in response.alternatives if s.strip()][:n]
+        except Exception as exc:
+            log.warning("Structured query expansion failed, falling back to plain text: %s", exc)
+            try:
+                plain = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": query},
+                    ],
+                    temperature=0.3,
+                    max_tokens=300,
+                )
+                lines = plain.choices[0].message.content.strip().splitlines()
+                result = [l.strip().lstrip("0123456789.-) ") for l in lines if l.strip()][:n]
+            except Exception:
+                result = []
         _expansion_cache[cache_key] = result
         return result
 

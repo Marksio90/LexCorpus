@@ -46,6 +46,10 @@ class AskRequest(BaseModel):
         description="Filter by publisher/court type: WDU, WMP, ADMINISTRATIVE, SUPREME, CONSTITUTIONAL_TRIBUNAL, COMMON")
     source_type_filter: Optional[SourceType] = Field(default=None,
         description="Filter by source type: legislation | judgment_nsa | judgment_sn | judgment_tk | judgment_common")
+    exclude_repealed: bool = Field(default=True,
+        description="Exclude repealed legislation (domyślnie True — zwraca tylko obowiązujące przepisy)")
+    as_of_year: Optional[int] = Field(default=None,
+        description="Stan prawny na dany rok, np. 2018. Filtruje akty opublikowane do tego roku włącznie.")
     use_rag: bool = Field(default=True)
     history: list[dict[str, str]] | None = None  # [{"role": "user"|"assistant", "content": "..."}]
 
@@ -59,6 +63,8 @@ class SearchRequest(BaseModel):
     year_to: Optional[int] = Field(default=None)
     publisher_filter: Optional[str] = Field(default=None)
     source_type_filter: Optional[SourceType] = Field(default=None)
+    exclude_repealed: bool = Field(default=True)
+    as_of_year: Optional[int] = Field(default=None)
 
 
 class SourceDocument(BaseModel):

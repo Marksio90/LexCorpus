@@ -92,6 +92,16 @@ def ensure_collection(
             field_name=field,
             field_schema=qmodels.PayloadSchemaType.KEYWORD,
         )
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="is_repealed",
+        field_schema=qmodels.PayloadSchemaType.BOOL,
+    )
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="valid_from_year",
+        field_schema=qmodels.PayloadSchemaType.INTEGER,
+    )
     log.info("Collection created with dense + sparse vectors and payload indexes")
 
 
@@ -125,9 +135,17 @@ PUBLISHER_TO_SOURCE = {
 
 PUBLISHER_TO_SOURCE["KIS"] = "tax_interpretation"
 
+_REPEALED_STATUSES = {"uchylony", "nieobowiązujący"}
+
 
 def build_payload(chunk: dict) -> dict:
     publisher = chunk.get("publisher", "WDU")
+    status = str(chunk.get("status", "")).lower().strip()
+    year_raw = chunk.get("year", "")
+    try:
+        valid_from_year = int(str(year_raw)[:4]) if year_raw else 0
+    except (ValueError, TypeError):
+        valid_from_year = 0
     payload: dict = {
         "act_id": str(chunk.get("act_id", "")),
         "title": chunk.get("title", ""),
@@ -140,6 +158,8 @@ def build_payload(chunk: dict) -> dict:
         "total_chunks": int(chunk.get("total_chunks", 1)),
         "text": chunk.get("text", ""),
         "approx_tokens": int(chunk.get("approx_tokens", 0)),
+        "is_repealed": status in _REPEALED_STATUSES,
+        "valid_from_year": valid_from_year,
     }
     # Parent-child fields (only present when --parent-child preprocessing was used)
     if chunk.get("chunk_type"):
