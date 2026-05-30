@@ -676,7 +676,7 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
             "i terminologii prawnej. Nie powtarzaj oryginalnego pytania."
         )
         try:
-            response = client.beta.structured_outputs.parse(
+            response = client.beta.chat.completions.parse(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system},
@@ -686,7 +686,7 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
                 temperature=0.3,
                 max_tokens=300,
             )
-            result = [s.strip() for s in response.alternatives if s.strip()][:n]
+            result = [s.strip() for s in response.choices[0].message.parsed.alternatives if s.strip()][:n]
         except Exception as exc:
             log.warning("Structured query expansion failed, falling back to plain text: %s", exc)
             try:
