@@ -299,6 +299,29 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lexcorpus-worker
+    command: celery -A api.tasks worker --loglevel=info --concurrency=2
+    volumes:
+      - ./data:/app/data
+      - private_data:/app/data/private
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
+      - QDRANT_PATH=http://qdrant:6333
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-paraphrase-multilingual-MiniLM-L12-v2}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ── Training (GPU required) ────────────────────────────────────────────────
   # Run manually on a GPU machine:
   #   docker compose run --rm train
@@ -355,3 +378,4 @@ services:
 
 volumes:
   postgres_data:
+  private_data:

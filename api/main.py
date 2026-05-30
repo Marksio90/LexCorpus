@@ -819,6 +819,35 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
     )
 
 
+@app.post("/internal/enqueue-document")
+async def enqueue_document(req: Request) -> dict:
+    """
+    Kolejkuje przetwarzanie prywatnego dokumentu przez Celery worker.
+    Wywoływany przez Next.js po zapisaniu pliku na dysk.
+    Wymaga X-Internal-Token.
+    """
+    if not _is_internal_request(req):
+        raise HTTPException(status_code=403, detail="Brak dostępu.")
+    body = await req.json()
+    doc_id    = body.get("doc_id")
+    user_id   = body.get("user_id")
+    file_path = body.get("file_path")
+    mime_type = body.get("mime_type", "application/octet-stream")
+    if not (doc_id and user_id and file_path):
+        raise HTTPException(status_code=422, detail="Wymagane: doc_id, user_id, file_path")
+    try:
+        from api.tasks import process_private_document
+        task = process_private_document.apply_async(
+            args=[doc_id, user_id, file_path, mime_type],
+            task_id=f"doc-{doc_id}",
+        )
+        log.info("Zakolejkowano task %s dla doc %s", task.id, doc_id)
+        return {"task_id": task.id, "status": "queued"}
+    except Exception as exc:
+        log.error("Błąd kolejkowania: %s", exc)
+        raise HTTPException(status_code=503, detail=f"Kolejka niedostępna: {exc}")
+
+
 @app.delete("/private-collection/{user_id}")
 async def delete_private_collection(user_id: str, req: Request) -> dict:
     """Usuwa prywatną kolekcję Qdrant użytkownika."""

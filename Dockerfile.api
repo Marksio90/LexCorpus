@@ -19,7 +19,9 @@ RUN pip install --no-cache-dir \
     pymupdf \
     "apscheduler>=3.10" \
     redis \
-    asyncpg
+    asyncpg \
+    "celery[redis]" \
+    psycopg2-binary
 
 COPY . .
 
