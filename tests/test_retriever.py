@@ -16,11 +16,23 @@ class TestRouteQuery:
         assert _route_query("Jak rozliczyć VAT i podatek dochodowy?") == "tax"
 
     def test_routes_judgment_keywords(self):
-        # Wymaga >= 2 trafień: "wyrok" + "NSA" matchują \b...\b
-        assert _route_query("Czy sąd NSA wydał wyrok w tej sprawie?") == "judgment"
+        # Fleksja: "wyroki" i "skargi" (dopełniacz) powinny być teraz rozpoznane
+        assert _route_query("Jakie wyroki wydał NSA w sprawie skargi kasacyjnej?") == "judgment"
 
     def test_routes_legislation_keywords(self):
         assert _route_query("Co oznacza artykuł i jaki jest paragraf w kodeksie?") == "legislation"
+
+    def test_routes_judgment_inflected_forms(self):
+        # Formy fleksyjne: wyroki (l.mn.), skargi (dop.), przepisów (dop.)
+        assert _route_query("Jakie wyroki NSA dotyczą skargi na decyzję?") == "judgment"
+
+    def test_routes_legislation_inflected_forms(self):
+        # ustaw (dop. l.mn.), przepisów (dop. l.mn.)
+        assert _route_query("Jakie przepisy ustaw regulują ten obowiązek?") == "legislation"
+
+    def test_routes_tax_inflected_forms(self):
+        # fakturę (biernik), podatku (dop.)
+        assert _route_query("Czy można odliczyć podatku VAT od faktury za usługę?") == "tax"
 
     def test_ambiguous_returns_none(self):
         assert _route_query("Co zrobić?") is None
