@@ -22,6 +22,9 @@ import sys
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
@@ -123,10 +126,13 @@ def call_gpt4_no_rag(question: str, api_key: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run LexCorpus RAG evaluation.")
     parser.add_argument("--questions", type=Path, default=Path("data/eval_questions.jsonl"))
-    parser.add_argument("--qdrant", default="data/qdrant")
-    parser.add_argument("--collection", default="lexcorpus")
-    parser.add_argument("--model", default="paraphrase-multilingual-MiniLM-L12-v2")
+    parser.add_argument("--qdrant", default=os.getenv("QDRANT_PATH", "data/qdrant"))
+    parser.add_argument("--collection", default=os.getenv("QDRANT_COLLECTION", "lexcorpus"))
+    parser.add_argument("--model", default=os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large-v2"))
+    parser.add_argument("--rerank-model", default=os.getenv("RERANK_MODEL", "sdadas/polish-reranker-large-ranknet"))
+    parser.add_argument("--query-prefix", default=os.getenv("EMBED_QUERY_PREFIX", "[query]: "))
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--rerank", action="store_true", help="Enable cross-encoder reranking during eval")
     parser.add_argument("--no-llm", action="store_true", help="Skip LLM calls (retrieval scoring only)")
     parser.add_argument("--compare-gpt4", action="store_true", help="Also run GPT-4o without RAG for baseline comparison")
     parser.add_argument("--output", type=Path, default=Path("data/eval_results.json"))
@@ -134,12 +140,16 @@ def main() -> None:
 
     from rag.retriever import LegalRetriever
 
-    log.info("Loading retriever …")
+    log.info("Loading retriever (model=%s, reranker=%s) …", args.model, args.rerank_model)
     retriever = LegalRetriever(
         qdrant=args.qdrant,
         collection=args.collection,
         model_name=args.model,
-        rerank=False,  # disabled in eval for speed — pure retrieval quality
+        rerank_model_name=args.rerank_model,
+        rerank=args.rerank,
+        query_prefix=args.query_prefix,
+        crag_enabled=False,   # disabled in eval — we want to see raw retrieval quality
+        adaptive_rag=False,   # disabled in eval — always retrieve for fair comparison
     )
 
     questions = load_questions(args.questions)
@@ -160,9 +170,13 @@ def main() -> None:
         log.info("[%d/%d] %s", q["id"], len(questions), q["question"][:70])
 
         # Retrieval
+        from rag.retriever import QueryComplexity
+        complexity = retriever._classify_complexity(q["question"])
         chunks = retriever.retrieve(q["question"], top_k=args.top_k)
         context = retriever.format_context(chunks, max_chars=3000)
         retrieval_scores = score_retrieval(chunks, q)
+        retrieval_scores["complexity"] = complexity.value
+        retrieval_scores["n_retrieved"] = len(chunks)
 
         # LexCorpus RAG answer
         answer = ""

@@ -86,11 +86,13 @@ from api.routers.ask import router as ask_router
 from api.routers.search import router as search_router
 from api.routers.sync import router as sync_router
 from api.routers.private import router as private_router
+from api.routers.agent import router as agent_router
 
 app.include_router(ask_router)
 app.include_router(search_router)
 app.include_router(sync_router)
 app.include_router(private_router)
+app.include_router(agent_router)
 
 
 # ── Utility endpoints ──────────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
+DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large-v2"
 DEFAULT_COLLECTION = "lexcorpus"
 DEFAULT_QDRANT_PATH = "data/qdrant"
 BATCH_SIZE = 64
@@ -92,6 +92,14 @@ def ensure_collection(
             field_name=field,
             field_schema=qmodels.PayloadSchemaType.KEYWORD,
         )
+    # EuroVoc multi-label classification — stored as a list of domain strings.
+    # Qdrant KEYWORD index on array fields supports filter queries like:
+    #   FieldCondition(key="eurovoc_labels", match=MatchAny(any=["prawo pracy"]))
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="eurovoc_labels",
+        field_schema=qmodels.PayloadSchemaType.KEYWORD,
+    )
     client.create_payload_index(
         collection_name=collection_name,
         field_name="is_repealed",
@@ -168,6 +176,15 @@ def build_payload(chunk: dict) -> dict:
         payload["parent_text"] = chunk["parent_text"]
     if chunk.get("parent_chunk_id"):
         payload["parent_chunk_id"] = chunk["parent_chunk_id"]
+    # Contextual Retrieval: store the LLM-generated context prefix (used at embed time)
+    if chunk.get("ctx_prefix"):
+        payload["ctx_prefix"] = chunk["ctx_prefix"]
+    # EuroVoc multi-label classification — list of domain strings.
+    # Populated by scripts/classify_eurovoc.py. Stored as a keyword-indexed
+    # array so Qdrant can filter on individual labels.
+    eurovoc_labels = chunk.get("eurovoc_labels")
+    if eurovoc_labels and isinstance(eurovoc_labels, list):
+        payload["eurovoc_labels"] = [str(lbl) for lbl in eurovoc_labels]
     return payload
 
 
@@ -179,7 +196,16 @@ def ingest_chunks(
     collection_name: str,
     batch_size: int = BATCH_SIZE,
 ) -> int:
-    texts = [c.get("text", "") for c in chunks]
+    # Contextual Retrieval: if a chunk has a 'ctx_prefix' (LLM-generated context summary),
+    # prepend it to the text at embed time. This improves retrieval by adding document-level
+    # context to each chunk. Documents must NOT use the query_prefix here.
+    texts = [
+        (c["ctx_prefix"] + "\n\n" + c["text"]) if c.get("ctx_prefix") else c.get("text", "")
+        for c in chunks
+    ]
+    ctx_count = sum(1 for c in chunks if c.get("ctx_prefix"))
+    if ctx_count:
+        log.info("Contextual Retrieval: %d/%d chunks have ctx_prefix", ctx_count, len(chunks))
 
     log.info("Computing dense embeddings for %d chunks …", len(chunks))
     dense_embeddings = dense_model.encode(

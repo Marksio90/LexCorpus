@@ -169,7 +169,7 @@ services:
     environment:
       - QDRANT_PATH=http://qdrant:6333
       - QDRANT_COLLECTION=lexcorpus
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
     volumes:
       - ./data:/app/data
@@ -188,7 +188,7 @@ services:
           python rag/ingest.py
             --input /app/data/processed/chunks.jsonl
             --qdrant http://qdrant:6333
-            --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
+            --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
             --recreate
           && touch \"$$SENTINEL\"
           && echo 'Ingest complete. Sentinel written.';
@@ -238,10 +238,15 @@ services:
       - QDRANT_COLLECTION=lexcorpus
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
-      - RERANK_MODEL=${RERANK_MODEL:-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
+      - EMBED_QUERY_PREFIX=${EMBED_QUERY_PREFIX:-[query]: }
+      - RERANK_MODEL=${RERANK_MODEL:-sdadas/polish-reranker-large-ranknet}
       - RERANK_ENABLED=${RERANK_ENABLED:-true}
       - EXPAND_ENABLED=${EXPAND_ENABLED:-true}
+      - HYDE_ENABLED=${HYDE_ENABLED:-true}
+      - CRAG_ENABLED=${CRAG_ENABLED:-true}
+      - CRAG_LOW_THRESHOLD=${CRAG_LOW_THRESHOLD:--3.0}
+      - ADAPTIVE_RAG_ENABLED=${ADAPTIVE_RAG_ENABLED:-true}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-20}
@@ -316,7 +321,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
       - QDRANT_PATH=http://qdrant:6333
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
     depends_on:
       redis:
         condition: service_healthy
@@ -373,7 +378,7 @@ services:
         && python rag/ingest.py
           --input /app/data/processed/chunks.jsonl
           --qdrant http://qdrant:6333
-          --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large}
+          --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
         && touch /app/data/qdrant/.ingested
       "
     depends_on:
