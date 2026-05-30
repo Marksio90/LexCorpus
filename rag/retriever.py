@@ -22,13 +22,15 @@ Usage as script:
 from __future__ import annotations
 
 import argparse
+import enum
 import hashlib
 import json
 import logging
+import os
 import re
 import sys
 from collections import OrderedDict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -44,16 +46,35 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large"
-DEFAULT_RERANK_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+DEFAULT_MODEL = "sdadas/mmlw-retrieval-roberta-large-v2"
+DEFAULT_RERANK_MODEL = "sdadas/polish-reranker-large-ranknet"
 DEFAULT_COLLECTION = "lexcorpus"
 DEFAULT_QDRANT_PATH = "data/qdrant"
 DEFAULT_TOP_K = 5
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 PREFETCH_MULTIPLIER = 6  # fetch 6x candidates for better recall before rerank
+PREFETCH_MULTIPLIER_COMPLEX = 12  # 12x for complex multi-hop queries
 EXPAND_N = 3             # 3 alternative queries + original = 4 total
+EXPAND_N_COMPLEX = 5     # 5 alternatives for complex multi-hop queries
 CONTEXT_EXPAND = True    # fetch neighbor chunks for wider context in format_context()
+
+# mmlw-v2 uses "[query]: " prefix for queries (NOT for documents at index time).
+# stella-pl-retrieval-8k uses instruction-style prompt.
+# Set EMBED_QUERY_PREFIX="" to disable for models that don't need it.
+DEFAULT_QUERY_PREFIX = "[query]: "
+
+# CRAG: cross-encoder score threshold below which a chunk is treated as "incorrect"
+# and filtered before LLM generation. Range depends on reranker; tune empirically.
+CRAG_LOW_THRESHOLD = -3.0   # below this → chunk filtered (saves LLM from bad context)
+CRAG_MID_THRESHOLD = 0.0    # below this → chunk marked as "ambiguous" (kept but flagged)
+
+
+class QueryComplexity(str, enum.Enum):
+    """Adaptive RAG: complexity class that drives retrieval strategy selection."""
+    TRIVIAL = "trivial"    # no retrieval — LLM answers from memory (definitions, basic facts)
+    SIMPLE = "simple"      # standard single-pass hybrid RAG
+    COMPLEX = "complex"    # multi-hop: more candidates, more expansions, iterative retrieval
 
 
 @dataclass
@@ -72,6 +93,7 @@ class RetrievedChunk:
     chunk_type: str = ""        # "child" | "parent" | "" (legacy)
     is_repealed: bool = False
     valid_from_year: int = 0
+    crag_status: str = "correct"  # CRAG: "correct" | "ambiguous" | "incorrect"
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -109,6 +131,9 @@ class LegalRetriever:
         rerank: bool = True,
         query_expander: Callable[[str, int], list[str]] | None = None,
         hyde_expander: Callable[[str], str] | None = None,
+        query_prefix: str = DEFAULT_QUERY_PREFIX,
+        crag_enabled: bool = True,
+        adaptive_rag: bool = True,
     ) -> None:
         self.model_name = model_name
         self.rerank_model_name = rerank_model_name
@@ -118,6 +143,9 @@ class LegalRetriever:
         self.rerank = rerank
         self.query_expander = query_expander  # fn(query, n) -> list[str] of alternatives
         self.hyde_expander = hyde_expander
+        self.query_prefix = query_prefix       # prepended to queries at embed time (NOT to docs)
+        self.crag_enabled = crag_enabled       # CRAG: filter low-confidence retrieved chunks
+        self.adaptive_rag = adaptive_rag       # Adaptive RAG: route by query complexity
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
@@ -158,7 +186,10 @@ class LegalRetriever:
         return self._client
 
     def _embed_dense(self, query: str) -> list[float]:
-        vector = self.dense_model.encode(query, normalize_embeddings=True, convert_to_numpy=True)
+        # Apply model-specific query prefix (e.g. "[query]: " for mmlw-v2).
+        # Documents at index time must be embedded WITHOUT this prefix.
+        text = (self.query_prefix + query) if self.query_prefix else query
+        vector = self.dense_model.encode(text, normalize_embeddings=True, convert_to_numpy=True)
         return vector.tolist()
 
     def _embed_dense_cached(self, query: str) -> list[float]:
@@ -232,6 +263,94 @@ class LegalRetriever:
                 valid_from_year=int(payload.get("valid_from_year", 0)),
             ))
         return results
+
+    # ── Adaptive RAG ──────────────────────────────────────────────────────────
+
+    _TRIVIAL_RE = re.compile(
+        r"^("
+        r"co to jest|co oznacza|definicja|definicję|czym jest|kim jest|co to"
+        r")|"
+        r"\b(co to jest|co oznacza|definicja|czym jest)\b",
+        re.IGNORECASE,
+    )
+    _COMPLEX_RE = re.compile(
+        r"\b("
+        r"jak .{3,25} wpływa|wpływ .{3,20} na"
+        r"|porównaj|porównanie|różnica między|różnice między"
+        r"|zależność między|w związku z|w kontekście"
+        r"|zarówno .{3,20} jak|na tle|jaka jest relacja"
+        r"|jak .{3,20} odnosi się"
+        r"|łącznie|kumulatywnie|jednocześnie"
+        r")\b",
+        re.IGNORECASE,
+    )
+    _MULTI_ACT_RE = re.compile(
+        r"(?:ustaw[aą]|kodeks\w*|rozporządzen\w+).{3,50}(?:ustaw[aą]|kodeks\w*|rozporządzen\w+)",
+        re.IGNORECASE,
+    )
+
+    def _classify_complexity(self, query: str) -> QueryComplexity:
+        """
+        Adaptive RAG: classify query into TRIVIAL/SIMPLE/COMPLEX to select
+        the appropriate retrieval strategy (no-retrieval / standard / multi-hop).
+        """
+        words = query.split()
+        # Very short queries or explicit definition requests → no retrieval needed
+        if len(words) <= 4 and self._TRIVIAL_RE.search(query):
+            return QueryComplexity.TRIVIAL
+        # Multi-act cross-references or explicit comparison → multi-hop retrieval
+        if self._COMPLEX_RE.search(query) or self._MULTI_ACT_RE.search(query):
+            return QueryComplexity.COMPLEX
+        return QueryComplexity.SIMPLE
+
+    # ── CRAG — Corrective Retrieval Augmented Generation ──────────────────────
+
+    def _crag_gate(
+        self,
+        query: str,
+        candidates: list[RetrievedChunk],
+        already_reranked: bool = False,
+    ) -> list[RetrievedChunk]:
+        """
+        CRAG relevance gate: score each candidate with the cross-encoder and mark
+        low-confidence chunks as 'ambiguous' or 'incorrect'.
+
+        Chunks marked 'incorrect' (CE score < CRAG_LOW_THRESHOLD) are filtered out
+        before being passed to the LLM to prevent hallucination from bad context.
+
+        If already_reranked=True, the chunk.score is already the CE score — reuse it.
+        Otherwise a fresh CE pass runs (cheaper full-batch call).
+        """
+        if not candidates:
+            return candidates
+
+        if not already_reranked:
+            pairs = [(query, c.text) for c in candidates]
+            try:
+                ce_scores = self.rerank_model.predict(pairs)
+            except Exception as exc:
+                log.warning("CRAG CE scoring failed, skipping gate: %s", exc)
+                return candidates
+        else:
+            ce_scores = [c.score for c in candidates]
+
+        result = []
+        filtered = 0
+        for chunk, score in zip(candidates, ce_scores):
+            s = float(score)
+            if s <= CRAG_LOW_THRESHOLD:
+                chunk.crag_status = "incorrect"
+                filtered += 1
+                continue  # drop this chunk
+            elif s <= CRAG_MID_THRESHOLD:
+                chunk.crag_status = "ambiguous"
+            else:
+                chunk.crag_status = "correct"
+            result.append(chunk)
+
+        if filtered:
+            log.info("CRAG gate filtered %d/%d low-confidence chunks", filtered, len(candidates))
+        return result
 
     def _fetch_neighbor_text(self, chunk: RetrievedChunk, direction: int) -> str:
         """Fetch the adjacent chunk (direction=-1 for prev, +1 for next) from Qdrant."""
@@ -382,15 +501,30 @@ class LegalRetriever:
 
         query_filter = qmodels.Filter(must=filter_conditions) if filter_conditions else None
 
-        candidate_limit = top_k * PREFETCH_MULTIPLIER
+        # ── Adaptive RAG: classify query complexity ────────────────────────────
+        complexity = QueryComplexity.SIMPLE
+        if self.adaptive_rag:
+            complexity = self._classify_complexity(query)
+            log.debug("Adaptive RAG complexity: %s", complexity.value)
 
-        # Build list of query variants: HyDE query (or original) + expansions
+        if complexity == QueryComplexity.TRIVIAL:
+            # No retrieval for trivial definitional questions — LLM answers from memory.
+            # Return empty list; the caller (API) will generate an answer without context.
+            log.info("Adaptive RAG: TRIVIAL query — skipping retrieval")
+            return []
+
+        # Scale retrieval effort by complexity
+        expand_n = EXPAND_N_COMPLEX if complexity == QueryComplexity.COMPLEX else EXPAND_N
+        prefetch_mult = PREFETCH_MULTIPLIER_COMPLEX if complexity == QueryComplexity.COMPLEX else PREFETCH_MULTIPLIER
+        candidate_limit = top_k * prefetch_mult
+
+        # ── Query variants: HyDE hypothesis + expansions ───────────────────────
         queries = [hyde_query]
         if use_expand:
             try:
-                alternatives = self.query_expander(query, EXPAND_N)
+                alternatives = self.query_expander(query, expand_n)
                 queries.extend(alternatives)
-                log.info("Query expansion: %d variants total", len(queries))
+                log.info("Query expansion: %d variants total (complexity=%s)", len(queries), complexity.value)
             except Exception as exc:
                 log.warning("Query expansion failed, using original only: %s", exc)
 
@@ -409,11 +543,14 @@ class LegalRetriever:
 
         if not use_rerank or len(candidates) <= top_k:
             results = sorted(candidates, key=lambda c: c.score, reverse=True)[:top_k]
+            # CRAG gate on RRF scores (less precise than CE, but still filters obvious misses)
+            if self.crag_enabled and use_rerank is False:
+                results = self._crag_gate(query, results, already_reranked=False)
             if has_children:
                 results = self._lift_to_parent(results)
             return self._expand_context(results) if (expand_context and not has_children) else results
 
-        # Cross-encoder re-ranking using the original query (not expansions)
+        # ── Cross-encoder re-ranking ───────────────────────────────────────────
         # Re-rank on child text (precise) before lifting to parent
         pairs = [(query, c.text) for c in candidates]
         ce_scores = self.rerank_model.predict(pairs)
@@ -423,6 +560,10 @@ class LegalRetriever:
         for ce_score, chunk in ranked[:top_k]:
             chunk.score = round(float(ce_score), 4)
             results.append(chunk)
+
+        # ── CRAG gate: filter low-confidence chunks after reranking ───────────
+        if self.crag_enabled:
+            results = self._crag_gate(query, results, already_reranked=True)
 
         if has_children:
             results = self._lift_to_parent(results)
@@ -505,7 +646,11 @@ class LegalRetriever:
         for i, chunk in enumerate(chunks, 1):
             # Use parent_text if available (richer context for LLM)
             display_text = chunk.parent_text if chunk.parent_text else chunk.text
-            block = f"[{i}] {chunk.citation()}\n{display_text}"
+            citation = chunk.citation()
+            # Mark ambiguous chunks so the LLM can be appropriately cautious
+            if chunk.crag_status == "ambiguous":
+                citation += " [niepewne trafienie]"
+            block = f"[{i}] {citation}\n{display_text}"
             if total_chars + len(block) > max_chars:
                 remaining = max_chars - total_chars
                 if remaining > 200:
@@ -716,19 +861,27 @@ def main() -> None:
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
     parser.add_argument("--qdrant", default=DEFAULT_QDRANT_PATH)
     parser.add_argument("--api-key", default=None)
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--rerank-model", default=DEFAULT_RERANK_MODEL)
+    parser.add_argument("--model", default=os.getenv("EMBEDDING_MODEL", DEFAULT_MODEL))
+    parser.add_argument("--rerank-model", default=os.getenv("RERANK_MODEL", DEFAULT_RERANK_MODEL))
+    parser.add_argument("--query-prefix", default=os.getenv("EMBED_QUERY_PREFIX", DEFAULT_QUERY_PREFIX))
     parser.add_argument("--no-rerank", action="store_true", help="Disable cross-encoder re-ranking")
     parser.add_argument("--no-expand", action="store_true", help="Disable query expansion")
-    parser.add_argument("--openai-key", default=None, help="OpenAI API key for query expansion")
+    parser.add_argument("--no-crag", action="store_true", help="Disable CRAG relevance gate")
+    parser.add_argument("--no-adaptive", action="store_true", help="Disable Adaptive RAG complexity routing")
+    parser.add_argument("--openai-key", default=os.getenv("OPENAI_API_KEY"))
     parser.add_argument("--year", default=None)
     parser.add_argument("--publisher", default=None)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--show-complexity", action="store_true", help="Print query complexity classification")
     args = parser.parse_args()
 
     expander = None
     if not args.no_expand and args.openai_key:
         expander = _make_openai_expander(args.openai_key)
+
+    hyde_expander = None
+    if args.openai_key:
+        hyde_expander = _make_hyde_expander(args.openai_key)
 
     retriever = LegalRetriever(
         model_name=args.model,
@@ -738,7 +891,15 @@ def main() -> None:
         api_key=args.api_key,
         rerank=not args.no_rerank,
         query_expander=expander,
+        hyde_expander=hyde_expander,
+        query_prefix=args.query_prefix,
+        crag_enabled=not args.no_crag,
+        adaptive_rag=not args.no_adaptive,
     )
+
+    if args.show_complexity:
+        c = retriever._classify_complexity(args.query)
+        print(f"Complexity: {c.value}")
 
     results = retriever.retrieve(
         args.query,

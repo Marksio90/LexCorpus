@@ -30,12 +30,19 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lexcorpus")
 LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large")
-RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sdadas/mmlw-retrieval-roberta-large-v2")
+RERANK_MODEL = os.getenv("RERANK_MODEL", "sdadas/polish-reranker-large-ranknet")
 RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() not in ("false", "0", "no")
 EXPAND_ENABLED = os.getenv("EXPAND_ENABLED", "true").lower() not in ("false", "0", "no")
+HYDE_ENABLED = os.getenv("HYDE_ENABLED", "true").lower() not in ("false", "0", "no")
+CRAG_ENABLED = os.getenv("CRAG_ENABLED", "true").lower() not in ("false", "0", "no")
+ADAPTIVE_RAG_ENABLED = os.getenv("ADAPTIVE_RAG_ENABLED", "true").lower() not in ("false", "0", "no")
+EMBED_QUERY_PREFIX = os.getenv("EMBED_QUERY_PREFIX", "[query]: ")
 INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
 _DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+# Bielik-11B uses a specific chat template; detect by model path
+_LOCAL_MODEL_IS_BIELIK = LOCAL_MODEL_PATH and "bielik" in (LOCAL_MODEL_PATH or "").lower()
 
 # ── Global model state ────────────────────────────────────────────────────────
 _retriever = None
@@ -57,7 +64,7 @@ def init_retriever():
         expander = _make_openai_expander(OPENAI_API_KEY)
 
     hyde_expander = None
-    if os.getenv("HYDE_ENABLED", "true").lower() not in ("false", "0", "no") and OPENAI_API_KEY:
+    if HYDE_ENABLED and OPENAI_API_KEY:
         hyde_expander = _make_hyde_expander(OPENAI_API_KEY)
 
     _retriever = LegalRetriever(
@@ -69,8 +76,14 @@ def init_retriever():
         rerank=RERANK_ENABLED,
         query_expander=expander,
         hyde_expander=hyde_expander,
+        query_prefix=EMBED_QUERY_PREFIX,
+        crag_enabled=CRAG_ENABLED,
+        adaptive_rag=ADAPTIVE_RAG_ENABLED,
     )
-    log.info("Retriever initialized (Qdrant: %s, collection: %s)", QDRANT_PATH, QDRANT_COLLECTION)
+    log.info(
+        "Retriever initialized (model=%s, reranker=%s, CRAG=%s, Adaptive=%s, prefix=%r)",
+        EMBEDDING_MODEL, RERANK_MODEL, CRAG_ENABLED, ADAPTIVE_RAG_ENABLED, EMBED_QUERY_PREFIX,
+    )
     return _retriever
 
 
@@ -182,12 +195,14 @@ def client_ip(request: Request) -> str:
 # ── Business logic ────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = (
-    "Jesteś ekspertem ds. polskiego prawa. Odpowiadasz na pytania prawne "
-    "na podstawie podanych przepisów prawa polskiego. "
+    "Jesteś ekspertem ds. polskiego prawa specjalizującym się w legislacji i orzecznictwie. "
+    "Odpowiadasz wyłącznie na podstawie podanych przepisów i wyroków sądowych. "
     "Udzielasz dokładnych, zwięzłych odpowiedzi w języku polskim. "
-    "Jeśli nie znasz odpowiedzi na podstawie podanych przepisów, mówisz o tym wprost. "
-    "Zawsze powołujesz się na konkretne artykuły i akty prawne używając znaczników [1], [2] itd. "
-    "odpowiadających numeracji podanych przepisów."
+    "Jeśli podane przepisy nie dają wystarczającej podstawy do udzielenia odpowiedzi, "
+    "mówisz o tym wprost — nie spekulujesz ani nie wymyślasz przepisów. "
+    "Zawsze cytuj konkretne artykuły i akty prawne używając znaczników [1], [2] itd. "
+    "odpowiadających numeracji w sekcji PRZEPISY. "
+    "Nie cytuj przepisów oznaczonych jako 'niepewne' bez wyraźnego zaznaczenia tej niepewności."
 )
 
 SOURCE_TYPE_TO_PUBLISHER = {
@@ -261,13 +276,31 @@ def resolve_publisher_filter(source_type_filter: str | None, publisher_filter: s
 def generate_with_local_model(prompt: str, max_new_tokens: int = 512) -> str:
     import torch
     model, tokenizer = _local_model, _local_tokenizer
-    full_prompt = f"### Instrukcja:\n{SYSTEM_PROMPT}\n\n### Pytanie:\n{prompt}\n\n### Odpowiedź:\n"
-    inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=3000)
+
+    if _LOCAL_MODEL_IS_BIELIK and hasattr(tokenizer, "apply_chat_template"):
+        # Bielik-11B-v2+ uses standard chat template (compatible with ChatML / Mistral format)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        try:
+            full_prompt = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        except Exception:
+            full_prompt = f"<s>[INST] {SYSTEM_PROMPT}\n\n{prompt} [/INST]"
+    else:
+        full_prompt = f"### Instrukcja:\n{SYSTEM_PROMPT}\n\n### Pytanie:\n{prompt}\n\n### Odpowiedź:\n"
+
+    inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=4096)
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
         output_ids = model.generate(
             **inputs, max_new_tokens=max_new_tokens,
             do_sample=True, temperature=0.3, top_p=0.9,
+            repetition_penalty=1.1,
             pad_token_id=tokenizer.eos_token_id,
         )
     generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]

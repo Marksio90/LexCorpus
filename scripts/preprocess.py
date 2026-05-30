@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 import unicodedata
@@ -504,6 +505,16 @@ def main() -> None:
             "passed to the LLM for wider context. Requires re-ingestion with --recreate."
         ),
     )
+    parser.add_argument(
+        "--contextual-retrieval", action="store_true",
+        help=(
+            "Enable Contextual Retrieval (Anthropic, 2024): call LLM to generate a "
+            "1-2 sentence context prefix for each chunk describing its source act and topic. "
+            "Stored in 'ctx_prefix' field — prepended at embed time in ingest.py. "
+            "Requires OPENAI_API_KEY. Prefer running scripts/generate_contextual_chunks.py "
+            "as a separate post-processing step for better throughput and resumability."
+        ),
+    )
     args = parser.parse_args()
 
     input_path: Path = args.input
@@ -533,6 +544,17 @@ def main() -> None:
         log.info(
             "Parent-child mode enabled: parent=%d tokens → children=%d tokens",
             chunk_tokens, CHILD_CHUNK_TOKENS,
+        )
+
+    contextual_retrieval = args.contextual_retrieval
+    if contextual_retrieval:
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if not openai_key:
+            log.error("--contextual-retrieval requires OPENAI_API_KEY to be set")
+            sys.exit(1)
+        log.info(
+            "Contextual Retrieval enabled — LLM will generate ctx_prefix for each chunk. "
+            "Tip: for large corpora use scripts/generate_contextual_chunks.py instead."
         )
 
     for f in files:
