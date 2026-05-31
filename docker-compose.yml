@@ -101,8 +101,8 @@ services:
       - KIS_YEAR_TO=${KIS_YEAR_TO:-2025}
       - KIS_MAX_ITEMS=${KIS_MAX_ITEMS:-}
       - KIS_ENABLED=${KIS_ENABLED:-true}
-      - KIS_API_URL=${KIS_API_URL:-https://interpretacje.podatki.gov.pl}
-      - KIS_DELAY=${KIS_DELAY:-0.5}
+      - KIS_API_URL=${KIS_API_URL:-https://eureka.mf.gov.pl}
+      - KIS_DELAY=${KIS_DELAY:-0.3}
     command: >
       sh -c "
         if [ \"$$KIS_ENABLED\" = 'false' ]; then
