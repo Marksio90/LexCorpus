@@ -27,7 +27,7 @@ from api.schemas import ErrorResponse, HealthResponse
 from api.logging_config import configure_logging
 from api.result_cache import get_cache
 from api.dependencies import (
-    init_retriever, init_local_model, init_openai,
+    init_retriever, init_llm_provider,
     QDRANT_COLLECTION, EMBEDDING_MODEL,
 )
 
@@ -52,8 +52,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         init_retriever()
     except Exception as exc:
         log.warning("Retriever warmup failed (will retry on first request): %s", exc)
-    init_local_model()
-    init_openai()
+    try:
+        init_llm_provider()
+    except Exception as exc:
+        log.warning("LLM provider warmup failed (will retry on first request): %s", exc)
     from api.sync import start_scheduler
     start_scheduler()
     log.info("LexCorpus API ready")
