@@ -256,7 +256,7 @@ def ingest_chunks(
     dense_embeddings = dense_model.encode(
         texts,
         batch_size=batch_size,
-        show_progress_bar=True,
+        show_progress_bar=False,
         normalize_embeddings=True,
         convert_to_numpy=True,
     )
