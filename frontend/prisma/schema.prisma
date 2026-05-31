@@ -40,6 +40,7 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime?
+  password      String?   // dla CredentialsProvider (bcrypt hash)
   image         String?
   createdAt     DateTime  @default(now())
 

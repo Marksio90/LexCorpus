@@ -1,8 +1,10 @@
 import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
+import bcrypt from "bcryptjs";
 
 const adminEmails = (process.env.ADMIN_EMAILS || "")
   .split(",")
@@ -26,6 +28,42 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
 
   providers: [
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Hasło", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email.toLowerCase() },
+        });
+
+        if (!user || !user.password) {
+          return null;
+        }
+
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
+      },
+    }),
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST || "smtp.ethereal.email",
@@ -40,19 +78,27 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user) {
-        const dbUser = user as typeof user & {
-          tier?: string;
-          id?: string;
-          onboardingCompletedAt?: Date | null;
-        };
-        session.user.id                   = dbUser.id ?? "";
-        session.user.tier                 = dbUser.tier ?? "free";
-        session.user.admin                = isAdmin(user.email);
-        session.user.onboardingCompletedAt = dbUser.onboardingCompletedAt ?? null;
+    async session({ session, user, token }) {
+      // Dla CredentialsProvider user jest w token
+      const userId = (user?.id || token?.sub || "") as string;
+      if (session.user && userId) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+        if (dbUser) {
+          session.user.id = dbUser.id;
+          session.user.tier = dbUser.tier ?? "free";
+          session.user.admin = isAdmin(dbUser.email);
+          session.user.onboardingCompletedAt = dbUser.onboardingCompletedAt ?? null;
+        }
       }
       return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
     },
   },
 
@@ -69,7 +115,7 @@ export const authOptions: NextAuthOptions = {
     error:  "/login",
   },
 
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
 
   secret: (() => {
     const s = process.env.NEXTAUTH_SECRET;
