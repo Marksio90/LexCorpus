@@ -43,13 +43,36 @@ def _normalize_ip(ip: str) -> str:
 
 _redis_client = None
 _redis_available = False
+_redis_last_failure: float = 0.0
+_REDIS_RETRY_INTERVAL = 30.0  # seconds before retrying a failed Redis connection
 _fallback_buckets: dict[str, list[float]] = defaultdict(list)
+
+# Atomic Lua script: remove expired entries, check count, add new entry if under limit.
+# Returns 1 if request is allowed, 0 if rate limit exceeded.
+_RATE_LIMIT_SCRIPT = """
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+redis.call('ZREMRANGEBYSCORE', key, '-inf', now - window)
+local count = redis.call('ZCARD', key)
+if count >= limit then
+    return 0
+end
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, window + 1)
+return 1
+"""
 
 
 def _get_redis():
-    global _redis_client, _redis_available
-    if _redis_client is not None:
-        return _redis_client if _redis_available else None
+    global _redis_client, _redis_available, _redis_last_failure
+    if _redis_available and _redis_client is not None:
+        return _redis_client
+    # Retry connection after cool-down to recover from transient failures
+    if not _redis_available and (time.time() - _redis_last_failure) < _REDIS_RETRY_INTERVAL:
+        return None
     try:
         import redis
         url = REDIS_URL
@@ -65,6 +88,7 @@ def _get_redis():
     except Exception as exc:
         _redis_client = None
         _redis_available = False
+        _redis_last_failure = time.time()
         log.warning("Rate limiter: Redis niedostępny (%s) — używam in-process fallback", exc)
     return _redis_client if _redis_available else None
 
@@ -72,21 +96,16 @@ def _get_redis():
 def _check_redis(ip: str, client) -> None:
     key = f"rl:{ip}"
     now = time.time()
-    window_start = now - RATE_LIMIT_WINDOW
-
-    pipe = client.pipeline()
-    pipe.zremrangebyscore(key, "-inf", window_start)
-    pipe.zcard(key)
-    pipe.zadd(key, {str(uuid.uuid4()): now})
-    pipe.expire(key, RATE_LIMIT_WINDOW + 1)
-    results = pipe.execute()
-
-    count_before_add = results[1]
-    if count_before_add >= RATE_LIMIT_REQUESTS:
-        # Undo the zadd we just did — remove the entry we added
-        pipe2 = client.pipeline()
-        pipe2.zremrangebyscore(key, now, now)
-        pipe2.execute()
+    allowed = client.eval(
+        _RATE_LIMIT_SCRIPT,
+        1,
+        key,
+        now,
+        RATE_LIMIT_WINDOW,
+        RATE_LIMIT_REQUESTS,
+        str(uuid.uuid4()),
+    )
+    if not allowed:
         raise HTTPException(
             status_code=429,
             detail=f"Zbyt wiele zapytań. Limit: {RATE_LIMIT_REQUESTS} na {RATE_LIMIT_WINDOW}s.",

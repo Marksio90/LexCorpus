@@ -267,16 +267,24 @@ def build_prompt(question: str, context: str) -> str:
     return f"PYTANIE: {question}\n\nODPOWIEDŹ:"
 
 
+def _sigmoid(x: float) -> float:
+    """Normalize cross-encoder logit to (0, 1) range."""
+    import math
+    return 1.0 / (1.0 + math.exp(-x))
+
+
 def compute_confidence(chunks: list) -> AnswerConfidence:
     if not chunks:
         return AnswerConfidence(
             score=0.0, level="niska", n_sources=0, top_source_score=0.0,
             explanation="Brak dokumentów — nie udało się znaleźć powiązanych przepisów.",
         )
-    scores = [c.score for c in chunks]
-    top_score = max(scores)
-    supporting = sum(1 for s in scores[:3] if s >= 0.60)
-    coverage = supporting / min(3, len(scores))
+    # Cross-encoder scores are raw logits (range ~-10..+10); normalize to 0-1 via sigmoid
+    # so that thresholds below are meaningful regardless of model scale.
+    norm_scores = [_sigmoid(c.score) for c in chunks]
+    top_score = max(norm_scores)
+    supporting = sum(1 for s in norm_scores[:3] if s >= 0.60)
+    coverage = supporting / min(3, len(norm_scores))
     combined = round(top_score * 0.6 + coverage * 0.4, 3)
     if combined >= 0.80:
         level = "wysoka"
