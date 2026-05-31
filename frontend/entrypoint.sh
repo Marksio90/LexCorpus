@@ -2,7 +2,7 @@
 set -e
 
 echo "[entrypoint] Running migrations..."
-./node_modules/prisma/dist/cli.js migrate deploy
+node ./node_modules/prisma/build/index.js migrate deploy
 
 echo "[entrypoint] Starting Next.js..."
 exec node server.js
