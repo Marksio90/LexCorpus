@@ -255,6 +255,7 @@ def fetch_year_range(
     year_to: int,
     output_dir: Path,
     max_items: int | None = None,
+    max_pages: int | None = None,
     delay: float = DELAY_BETWEEN_REQUESTS,
 ) -> int:
     """Fetch all interpretations between year_from and year_to."""
@@ -339,8 +340,8 @@ def fetch_year_range(
                 break
 
             page += 1
-            if MAX_PAGES and page >= MAX_PAGES:
-                stop_reason = f"max_pages ({MAX_PAGES}) reached"
+            if max_pages and page >= max_pages:
+                stop_reason = f"max_pages ({max_pages}) reached"
                 break
             time.sleep(delay)
 
@@ -360,6 +361,10 @@ def main() -> None:
         help="Limit total items fetched (for testing). Default: all."
     )
     parser.add_argument(
+        "--max-pages", type=int, default=MAX_PAGES,
+        help=f"Limit pages to fetch (safety cap). Default: {MAX_PAGES} (0 = unlimited)."
+    )
+    parser.add_argument(
         "--delay", type=float, default=DELAY_BETWEEN_REQUESTS,
         help=f"Delay between requests in seconds (default: {DELAY_BETWEEN_REQUESTS})"
     )
@@ -372,6 +377,7 @@ def main() -> None:
             year_to=args.year_to,
             output_dir=args.output,
             max_items=args.max_items,
+            max_pages=args.max_pages,
             delay=args.delay,
         )
 

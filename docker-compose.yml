@@ -103,6 +103,7 @@ services:
       - KIS_ENABLED=${KIS_ENABLED:-true}
       - KIS_API_URL=${KIS_API_URL:-https://eureka.mf.gov.pl}
       - KIS_DELAY=${KIS_DELAY:-0.3}
+      - KIS_MAX_PAGES=${KIS_MAX_PAGES:-50}
     command: >
       sh -c "
         if [ \"$$KIS_ENABLED\" = 'false' ]; then
@@ -110,7 +111,7 @@ services:
         elif ls /app/data/raw/kis_*.jsonl 1>/dev/null 2>&1; then
           echo 'KIS data already exists — skipping fetch.';
         else
-          python scripts/fetch_kis.py --year-from $$KIS_YEAR_FROM --year-to $$KIS_YEAR_TO ${KIS_MAX_ITEMS:+--max-items $$KIS_MAX_ITEMS} --output /app/data/raw/;
+          python scripts/fetch_kis.py --year-from $$KIS_YEAR_FROM --year-to $$KIS_YEAR_TO ${KIS_MAX_ITEMS:+--max-items $$KIS_MAX_ITEMS} ${KIS_MAX_PAGES:+--max-pages $$KIS_MAX_PAGES} --output /app/data/raw/;
         fi
       "
 
