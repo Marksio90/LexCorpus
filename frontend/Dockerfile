@@ -24,11 +24,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/pg ./node_modules/pg
-COPY --from=builder /app/node_modules/pgpass ./node_modules/pgpass
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/entrypoint.sh ./
 
 RUN chmod +x entrypoint.sh
