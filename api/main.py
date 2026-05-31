@@ -127,14 +127,21 @@ async def ping() -> dict:
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    """Full readiness check — verifies Qdrant connectivity and model state.
+    """Full readiness check — verifies Qdrant connectivity.
+    Model loading is lazy (on first request) so this endpoint stays fast.
     Returns HTTP 503 if critical dependencies are unavailable.
     """
     qdrant_ok = False
     collection_count = None
     try:
-        retriever = init_retriever()
-        info = retriever.client.get_collection(QDRANT_COLLECTION)
+        # Lightweight Qdrant check — don't trigger model loading
+        from qdrant_client import QdrantClient
+        client = QdrantClient(
+            url=os.getenv("QDRANT_URL") or os.getenv("QDRANT_PATH", "data/qdrant"),
+            api_key=os.getenv("QDRANT_API_KEY") or None,
+            timeout=5,
+        )
+        info = client.get_collection(QDRANT_COLLECTION)
         qdrant_ok = True
         collection_count = getattr(info, "points_count", None) or getattr(info, "vectors_count", None)
     except Exception as exc:
