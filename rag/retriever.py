@@ -39,6 +39,9 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from sentence_transformers import CrossEncoder, SentenceTransformer
 
+from rag.adaptive_rag import ComplexityRouter, QueryComplexity  # noqa: F401 (re-exported)
+from rag.crag import CRAGGate
+
 # Optional ColBERT reranker — imported lazily to avoid hard dependency at module load
 try:
     from rag.colbert_retriever import ColBERTRetriever as _ColBERTRetriever
@@ -70,17 +73,9 @@ CONTEXT_EXPAND = True    # fetch neighbor chunks for wider context in format_con
 # Set EMBED_QUERY_PREFIX="" to disable for models that don't need it.
 DEFAULT_QUERY_PREFIX = "[query]: "
 
-# CRAG: cross-encoder score threshold below which a chunk is treated as "incorrect"
-# and filtered before LLM generation. Range depends on reranker; tune empirically.
-CRAG_LOW_THRESHOLD = -3.0   # below this → chunk filtered (saves LLM from bad context)
-CRAG_MID_THRESHOLD = 0.0    # below this → chunk marked as "ambiguous" (kept but flagged)
-
-
-class QueryComplexity(str, enum.Enum):
-    """Adaptive RAG: complexity class that drives retrieval strategy selection."""
-    TRIVIAL = "trivial"    # no retrieval — LLM answers from memory (definitions, basic facts)
-    SIMPLE = "simple"      # standard single-pass hybrid RAG
-    COMPLEX = "complex"    # multi-hop: more candidates, more expansions, iterative retrieval
+# QueryComplexity is imported from rag.adaptive_rag and re-exported here for
+# backward compatibility with any code that imports it from rag.retriever.
+# CRAGGate thresholds live in rag.crag (env-configurable).
 
 
 @dataclass
@@ -160,6 +155,8 @@ class LegalRetriever:
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
         self._client: QdrantClient | None = None
+        self._complexity_router = ComplexityRouter()
+        self._crag_gate_instance: CRAGGate | None = None
 
     @property
     def dense_model(self) -> SentenceTransformer:
@@ -276,91 +273,20 @@ class LegalRetriever:
 
     # ── Adaptive RAG ──────────────────────────────────────────────────────────
 
-    _TRIVIAL_RE = re.compile(
-        r"^("
-        r"co to jest|co oznacza|definicja|definicję|czym jest|kim jest|co to"
-        r")|"
-        r"\b(co to jest|co oznacza|definicja|czym jest)\b",
-        re.IGNORECASE,
-    )
-    _COMPLEX_RE = re.compile(
-        r"\b("
-        r"jak .{3,25} wpływa|wpływ .{3,20} na"
-        r"|porównaj|porównanie|różnica między|różnice między"
-        r"|zależność między|w związku z|w kontekście"
-        r"|zarówno .{3,20} jak|na tle|jaka jest relacja"
-        r"|jak .{3,20} odnosi się"
-        r"|łącznie|kumulatywnie|jednocześnie"
-        r")\b",
-        re.IGNORECASE,
-    )
-    _MULTI_ACT_RE = re.compile(
-        r"(?:ustaw[aą]|kodeks\w*|rozporządzen\w+).{3,50}(?:ustaw[aą]|kodeks\w*|rozporządzen\w+)",
-        re.IGNORECASE,
-    )
-
     def _classify_complexity(self, query: str) -> QueryComplexity:
-        """
-        Adaptive RAG: classify query into TRIVIAL/SIMPLE/COMPLEX to select
-        the appropriate retrieval strategy (no-retrieval / standard / multi-hop).
-        """
-        words = query.split()
-        # Very short queries or explicit definition requests → no retrieval needed
-        if len(words) <= 4 and self._TRIVIAL_RE.search(query):
-            return QueryComplexity.TRIVIAL
-        # Multi-act cross-references or explicit comparison → multi-hop retrieval
-        if self._COMPLEX_RE.search(query) or self._MULTI_ACT_RE.search(query):
-            return QueryComplexity.COMPLEX
-        return QueryComplexity.SIMPLE
+        """Delegate to ComplexityRouter (kept for backward-compat with script --show-complexity)."""
+        return self._complexity_router.classify(query)
 
     # ── CRAG — Corrective Retrieval Augmented Generation ──────────────────────
 
-    def _crag_gate(
-        self,
-        query: str,
-        candidates: list[RetrievedChunk],
-        already_reranked: bool = False,
-    ) -> list[RetrievedChunk]:
-        """
-        CRAG relevance gate: score each candidate with the cross-encoder and mark
-        low-confidence chunks as 'ambiguous' or 'incorrect'.
-
-        Chunks marked 'incorrect' (CE score < CRAG_LOW_THRESHOLD) are filtered out
-        before being passed to the LLM to prevent hallucination from bad context.
-
-        If already_reranked=True, the chunk.score is already the CE score — reuse it.
-        Otherwise a fresh CE pass runs (cheaper full-batch call).
-        """
-        if not candidates:
-            return candidates
-
-        if not already_reranked:
-            pairs = [(query, c.text) for c in candidates]
-            try:
-                ce_scores = self.rerank_model.predict(pairs)
-            except Exception as exc:
-                log.warning("CRAG CE scoring failed, skipping gate: %s", exc)
-                return candidates
-        else:
-            ce_scores = [c.score for c in candidates]
-
-        result = []
-        filtered = 0
-        for chunk, score in zip(candidates, ce_scores):
-            s = float(score)
-            if s <= CRAG_LOW_THRESHOLD:
-                chunk.crag_status = "incorrect"
-                filtered += 1
-                continue  # drop this chunk
-            elif s <= CRAG_MID_THRESHOLD:
-                chunk.crag_status = "ambiguous"
-            else:
-                chunk.crag_status = "correct"
-            result.append(chunk)
-
-        if filtered:
-            log.info("CRAG gate filtered %d/%d low-confidence chunks", filtered, len(candidates))
-        return result
+    @property
+    def _crag(self) -> CRAGGate | None:
+        """Lazily create the CRAGGate so the rerank model isn't loaded until first use."""
+        if not self.crag_enabled:
+            return None
+        if self._crag_gate_instance is None:
+            self._crag_gate_instance = CRAGGate(self.rerank_model)
+        return self._crag_gate_instance
 
     def _fetch_neighbor_text(self, chunk: RetrievedChunk, direction: int) -> str:
         """Fetch the adjacent chunk (direction=-1 for prev, +1 for next) from Qdrant."""
@@ -543,7 +469,7 @@ class LegalRetriever:
         # ── Adaptive RAG: classify query complexity ────────────────────────────
         complexity = QueryComplexity.SIMPLE
         if self.adaptive_rag:
-            complexity = self._classify_complexity(query)
+            complexity = self._complexity_router.classify(query)
             log.debug("Adaptive RAG complexity: %s", complexity.value)
 
         if complexity == QueryComplexity.TRIVIAL:
@@ -583,8 +509,9 @@ class LegalRetriever:
         if not use_rerank or len(candidates) <= top_k:
             results = sorted(candidates, key=lambda c: c.score, reverse=True)[:top_k]
             # CRAG gate on RRF scores (less precise than CE, but still filters obvious misses)
-            if self.crag_enabled and use_rerank is False:
-                results = self._crag_gate(query, results, already_reranked=False)
+            crag = self._crag
+            if crag is not None and use_rerank is False:
+                results = crag.filter(query, results, already_reranked=False)
             if has_children:
                 results = self._lift_to_parent(results)
             results = self._expand_context(results) if (expand_context and not has_children) else results
@@ -606,8 +533,9 @@ class LegalRetriever:
             results.append(chunk)
 
         # ── CRAG gate: filter low-confidence chunks after reranking ───────────
-        if self.crag_enabled:
-            results = self._crag_gate(query, results, already_reranked=True)
+        crag = self._crag
+        if crag is not None:
+            results = crag.filter(query, results, already_reranked=True)
 
         if has_children:
             results = self._lift_to_parent(results)
@@ -805,6 +733,9 @@ def _route_query(query: str) -> str | None:
     return None  # ambiguous — search everything
 
 
+_CACHE_MAX_SIZE = 512  # max entries per in-process cache (unbounded growth prevention)
+
+
 def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
     """Return function that generates a hypothetical legal document passage for HyDE retrieval."""
     try:
@@ -813,11 +744,12 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
         raise RuntimeError("openai package required")
 
     client = openai.OpenAI(api_key=api_key)
-    _hyde_cache: dict[str, str] = {}
+    _hyde_cache: OrderedDict[str, str] = OrderedDict()
 
     def generate_hypothesis(query: str) -> str:
         key = hashlib.md5(query.encode()).hexdigest()
         if key in _hyde_cache:
+            _hyde_cache.move_to_end(key)
             return _hyde_cache[key]
         try:
             resp = client.chat.completions.create(
@@ -842,6 +774,8 @@ def _make_hyde_expander(api_key: str) -> Callable[[str], str]:
         except Exception:
             result = query  # fallback: use original query
         _hyde_cache[key] = result
+        if len(_hyde_cache) > _CACHE_MAX_SIZE:
+            _hyde_cache.popitem(last=False)  # evict LRU entry
         return result
 
     return generate_hypothesis
@@ -863,11 +797,12 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
         alternatives: list[str]
 
     client = openai.OpenAI(api_key=api_key)
-    _expansion_cache: dict[str, list[str]] = {}
+    _expansion_cache: OrderedDict[str, list[str]] = OrderedDict()
 
     def expand(query: str, n: int) -> list[str]:
         cache_key = hashlib.md5(f"{query}:{n}".encode()).hexdigest()
         if cache_key in _expansion_cache:
+            _expansion_cache.move_to_end(cache_key)
             return _expansion_cache[cache_key]
         system = (
             f"Jesteś asystentem prawnym. Wygeneruj dokładnie {n} alternatywne sformułowania "
@@ -903,6 +838,8 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
             except Exception:
                 result = []
         _expansion_cache[cache_key] = result
+        if len(_expansion_cache) > _CACHE_MAX_SIZE:
+            _expansion_cache.popitem(last=False)  # evict LRU entry
         return result
 
     return expand

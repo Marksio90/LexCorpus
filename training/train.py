@@ -119,10 +119,26 @@ def load_model_and_tokenizer(cfg: dict, bnb_config: BitsAndBytesConfig) -> tuple
             device_map="auto",
             trust_remote_code=cfg["model"]["trust_remote_code"],
         )
-    except OSError:
-        # Fallback to alternative model if primary not available
-        fallback = cfg["model"]["fallback_model_id"]
-        log.warning("Primary model not available, falling back to %s", fallback)
+    except OSError as exc:
+        fallback = cfg["model"].get("fallback_model_id")
+        if not fallback:
+            log.error("Primary model '%s' unavailable and no fallback configured.", model_id)
+            raise
+        log.error(
+            "Primary model '%s' unavailable: %s\n"
+            "UWAGA: Zamierzasz trenować na modelu zastępczym '%s'.\n"
+            "Wagi wynikowe NIE będą kompatybilne z konfiguracją deployment.\n"
+            "Użyj --config z innym base_model_id lub napraw dostęp do pierwotnego modelu.\n"
+            "Aby wymusić trening na modelu zastępczym, ustaw w config.yaml "
+            "allow_fallback: true.",
+            model_id, exc, fallback,
+        )
+        if not cfg["model"].get("allow_fallback", False):
+            raise RuntimeError(
+                f"Trening przerwany: model '{model_id}' niedostępny. "
+                f"Ustaw allow_fallback: true w config.yaml aby użyć '{fallback}'."
+            ) from exc
+        log.warning("allow_fallback=true — kontynuuję na modelu zastępczym '%s'", fallback)
         model = AutoModelForCausalLM.from_pretrained(
             fallback,
             quantization_config=bnb_config,

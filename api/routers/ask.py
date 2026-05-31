@@ -15,7 +15,7 @@ from api.schemas import AskRequest, AskResponse
 from api.result_cache import get_cache
 from api.dependencies import (
     is_internal_request, verify_api_token, client_ip, check_rate_limit,
-    init_retriever, generate_answer, build_prompt, chunk_to_source,
+    init_retriever, generate_answer, get_llm_provider, build_prompt, chunk_to_source,
     compute_confidence, resolve_publisher_filter, OPENAI_API_KEY, OPENAI_MODEL,
     SYSTEM_PROMPT,
 )
@@ -69,10 +69,11 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
 
     prompt = build_prompt(question, context_str)
 
-    if request.history and OPENAI_API_KEY:
+    if request.history:
         try:
-            import openai as _openai
-            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
+            provider = get_llm_provider()
+            if provider is None:
+                raise RuntimeError("No LLM provider configured")
             msgs: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
             for turn in request.history[-6:]:
                 role = turn.get("role", "user")
@@ -80,11 +81,7 @@ async def ask(request: AskRequest, req: Request) -> AskResponse:
                 if role in ("user", "assistant") and content:
                     msgs.append({"role": role, "content": content[:2000]})
             msgs.append({"role": "user", "content": prompt})
-            completion = client.chat.completions.create(
-                model=OPENAI_MODEL, max_tokens=1024, messages=msgs,
-            )
-            answer = completion.choices[0].message.content.strip()
-            model_used = OPENAI_MODEL
+            answer, model_used = await asyncio.to_thread(provider.generate, msgs)
         except Exception as exc:
             log.warning("Multi-turn /ask failed, falling back: %s", exc)
             answer, model_used = await asyncio.to_thread(generate_answer, prompt)
@@ -146,41 +143,33 @@ async def ask_stream(request: AskRequest, req: Request) -> StreamingResponse:
 
         prompt = build_prompt(question, context_str)
 
-        if not OPENAI_API_KEY:
-            yield sse({"type": "error", "detail": "OPENAI_API_KEY not set"})
+        provider = get_llm_provider()
+        if provider is None:
+            yield sse({"type": "error", "detail": "Brak skonfigurowanego modelu językowego."})
             return
 
-        try:
-            import openai as _openai
-            client = _openai.OpenAI(api_key=OPENAI_API_KEY)
-            messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
-            if request.history:
-                for turn in request.history[-6:]:
-                    role = turn.get("role", "user")
-                    content = turn.get("content", "")
-                    if role in ("user", "assistant") and content:
-                        messages.append({"role": role, "content": content[:2000]})
-            messages.append({"role": "user", "content": prompt})
+        messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        if request.history:
+            for turn in request.history[-6:]:
+                role = turn.get("role", "user")
+                content = turn.get("content", "")
+                if role in ("user", "assistant") and content:
+                    messages.append({"role": role, "content": content[:2000]})
+        messages.append({"role": "user", "content": prompt})
 
-            stream = client.chat.completions.create(
-                model=OPENAI_MODEL, messages=messages,
-                temperature=0.2, max_tokens=1500, stream=True, timeout=90,
-            )
+        try:
             deadline = time.time() + 90
-            for chunk in stream:
+            for delta in provider.stream(messages, max_tokens=1500):
                 if time.time() > deadline:
                     yield sse({"type": "error", "detail": "Generacja przekroczyła limit czasu."})
                     return
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield sse({"type": "delta", "text": delta})
-
+                yield sse({"type": "delta", "text": delta})
         except Exception as exc:
             log.error("Streaming generation failed: %s", exc)
             yield sse({"type": "error", "detail": "Błąd generowania odpowiedzi."})
             return
 
-        yield sse({"type": "done", "model_used": OPENAI_MODEL,
+        yield sse({"type": "done", "model_used": provider.model_id,
                    "confidence": compute_confidence(retrieved_chunks).model_dump()})
 
     return StreamingResponse(

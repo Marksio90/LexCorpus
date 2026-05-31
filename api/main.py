@@ -24,15 +24,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.schemas import ErrorResponse, HealthResponse
+from api.logging_config import configure_logging
 from api.result_cache import get_cache
 from api.dependencies import (
-    init_retriever, init_local_model, init_openai,
+    init_retriever, init_llm_provider,
     QDRANT_COLLECTION, EMBEDDING_MODEL,
 )
 
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator as _PrometheusInstrumentator
+    _PROMETHEUS_AVAILABLE = True
+except ImportError:
+    _PROMETHEUS_AVAILABLE = False
+
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+configure_logging()
 log = logging.getLogger(__name__)
 
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
@@ -45,8 +52,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         init_retriever()
     except Exception as exc:
         log.warning("Retriever warmup failed (will retry on first request): %s", exc)
-    init_local_model()
-    init_openai()
+    try:
+        init_llm_provider()
+    except Exception as exc:
+        log.warning("LLM provider warmup failed (will retry on first request): %s", exc)
     from api.sync import start_scheduler
     start_scheduler()
     log.info("LexCorpus API ready")
@@ -70,6 +79,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Internal-Token"],
 )
+
+if _PROMETHEUS_AVAILABLE:
+    _PrometheusInstrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 @app.exception_handler(Exception)
