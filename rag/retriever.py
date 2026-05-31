@@ -22,7 +22,6 @@ Usage as script:
 from __future__ import annotations
 
 import argparse
-import enum
 import hashlib
 import json
 import logging
@@ -30,7 +29,7 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
@@ -812,7 +811,7 @@ def _make_openai_expander(api_key: str) -> Callable[[str, int], list[str]]:
                     max_tokens=300,
                 )
                 lines = plain.choices[0].message.content.strip().splitlines()
-                result = [l.strip().lstrip("0123456789.-) ") for l in lines if l.strip()][:n]
+                result = [ln.strip().lstrip("0123456789.-) ") for ln in lines if ln.strip()][:n]
             except Exception:
                 result = []
         _expansion_cache[cache_key] = result

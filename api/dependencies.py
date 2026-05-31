@@ -3,23 +3,14 @@ dependencies.py — Shared state, init functions, and helpers for all routers.
 """
 from __future__ import annotations
 
-import functools
 import hashlib
-import json
 import logging
 import os
-import time
-from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request
-from fastapi.responses import StreamingResponse
 
-from api.schemas import AskResponse, AnswerConfidence, SourceDocument, publisher_to_source_type
-from api.result_cache import get_cache
-from api.rate_limit import check_rate_limit
-
-if TYPE_CHECKING:
-    from rag.retriever import RetrievedChunk
+from api.schemas import AnswerConfidence, SourceDocument, publisher_to_source_type
+from api.rate_limit import check_rate_limit  # noqa: F401
 
 log = logging.getLogger(__name__)
 

@@ -8,8 +8,7 @@ for mod in ("fastembed", "fastembed.sparse", "fastembed.sparse.bm25",
             "sentence_transformers", "tqdm"):
     sys.modules.setdefault(mod, MagicMock())
 
-import pytest
-from rag.ingest import build_payload, PUBLISHER_TO_SOURCE
+from rag.ingest import build_payload  # noqa: E402
 
 
 class TestBuildPayload:

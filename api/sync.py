@@ -86,7 +86,8 @@ def _trigger_newsletter() -> None:
     base_url = os.environ.get("NEXTAUTH_URL", "http://frontend:3000")
     secret   = os.environ.get("NEWSLETTER_INTERNAL_SECRET", "")
     try:
-        import urllib.request, json as _json
+        import urllib.request
+        import json as _json
         req = urllib.request.Request(
             f"{base_url}/api/newsletter/send",
             data=b"{}",
@@ -183,12 +184,12 @@ def run_sync() -> None:
             lines.append("Sync complete ✓")
 
             # Step 4: detect changes and match with user query history
-            db_path = os.getenv("DATABASE_PATH", "frontend/prisma/dev.db")
-            if chunk_file.exists():
+            db_url = os.getenv("DATABASE_URL", "")
+            if chunk_file.exists() and db_url:
                 _run_cmd(
                     [python, "scripts/detect_changes.py",
                      "--new-chunks", str(chunk_file),
-                     "--db", db_path,
+                     "--db-url", db_url,
                      "--threshold", "0.72"],
                     "detect-changes",
                     lines,

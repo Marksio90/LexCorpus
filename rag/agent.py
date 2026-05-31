@@ -33,7 +33,7 @@ import re
 import sys
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -586,7 +586,6 @@ class LegalAgent:
             {"type": "error",  "detail": str}
         """
         import asyncio
-        import functools
         import queue
         import threading
 
@@ -684,7 +683,6 @@ class LegalAgent:
                     resp = self._call_llm(messages, use_tools=False)
                     answer = resp.choices[0].message.content or ""
 
-                from rag.retriever import RetrievedChunk
                 sources_raw = [c.as_dict() for c in self._retrieve_tool._all_chunks]
                 event_queue.put({
                     "type": "answer",

@@ -48,7 +48,7 @@ jobs:
         run: pip install ruff
 
       - name: Ruff check
-        run: ruff check api/ rag/ scripts/ training/ tests/ --select E,F,W --ignore E501,W503
+        run: ruff check api/ rag/ scripts/ training/ tests/ --select E,F,W --ignore E501
 
   frontend-typecheck:
     name: Frontend type check
