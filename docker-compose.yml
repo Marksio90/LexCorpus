@@ -168,20 +168,7 @@ services:
         condition: service_completed_successfully
     restart: "no"
     command: >
-      sh -c "
-        SENTINEL=/app/data/qdrant/.ingested;
-        if [ -f \"$$SENTINEL\" ]; then
-          echo 'Qdrant already ingested (sentinel exists) — skipping.';
-        else
-          python rag/ingest.py
-            --input /app/data/processed/chunks.jsonl
-            --qdrant http://qdrant:6333
-            --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
-            --recreate
-          && touch \"$$SENTINEL\"
-          && echo 'Ingest complete. Sentinel written.';
-        fi
-      "
+      sh -c "SENTINEL=/app/data/qdrant/.ingested; if [ -f \"$$SENTINEL\" ]; then echo 'Qdrant already ingested (sentinel exists) — skipping.'; else python rag/ingest.py --input /app/data/processed/chunks.jsonl --qdrant http://qdrant:6333 --model ${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2} --recreate && touch \"$$SENTINEL\" && echo 'Ingest complete. Sentinel written.'; fi"
 
   postgres:
     image: postgres:16-alpine
