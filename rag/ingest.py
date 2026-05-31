@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import sys
@@ -146,6 +147,31 @@ PUBLISHER_TO_SOURCE["KIS"] = "tax_interpretation"
 _REPEALED_STATUSES = {"uchylony", "nieobowiązujący"}
 
 
+def chunk_text_hash(chunk: dict) -> str:
+    """Deterministic MD5 hash of the chunk text — used for incremental ingestion."""
+    text = chunk.get("text", "") or ""
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
+def fetch_existing_hashes(
+    client: QdrantClient, collection_name: str, point_ids: list[str]
+) -> dict[str, str]:
+    """Return {point_id: text_hash} for the given point IDs that already exist in Qdrant."""
+    if not point_ids:
+        return {}
+    try:
+        records = client.retrieve(
+            collection_name=collection_name,
+            ids=point_ids,
+            with_payload=["text_hash"],
+            with_vectors=False,
+        )
+        return {str(r.id): (r.payload or {}).get("text_hash", "") for r in records}
+    except Exception as exc:
+        log.warning("Could not fetch existing hashes (will re-ingest all): %s", exc)
+        return {}
+
+
 def build_payload(chunk: dict) -> dict:
     publisher = chunk.get("publisher", "WDU")
     status = str(chunk.get("status", "")).lower().strip()
@@ -185,6 +211,8 @@ def build_payload(chunk: dict) -> dict:
     eurovoc_labels = chunk.get("eurovoc_labels")
     if eurovoc_labels and isinstance(eurovoc_labels, list):
         payload["eurovoc_labels"] = [str(lbl) for lbl in eurovoc_labels]
+    # Incremental ingestion: hash of text content for change detection.
+    payload["text_hash"] = chunk_text_hash(chunk)
     return payload
 
 
@@ -195,7 +223,24 @@ def ingest_chunks(
     client: QdrantClient,
     collection_name: str,
     batch_size: int = BATCH_SIZE,
+    incremental: bool = False,
 ) -> int:
+    # Incremental mode: skip chunks whose text hash hasn't changed in Qdrant.
+    if incremental:
+        all_ids = [chunk_to_point_id(c, i) for i, c in enumerate(chunks)]
+        existing_hashes = fetch_existing_hashes(client, collection_name, all_ids)
+        original_count = len(chunks)
+        chunks = [
+            c for i, c in enumerate(chunks)
+            if existing_hashes.get(all_ids[i], "") != chunk_text_hash(c)
+        ]
+        skipped = original_count - len(chunks)
+        if skipped:
+            log.info("Incremental mode: skipping %d/%d unchanged chunks", skipped, original_count)
+        if not chunks:
+            log.info("All chunks are up to date — nothing to ingest")
+            return 0
+
     # Contextual Retrieval: if a chunk has a 'ctx_prefix' (LLM-generated context summary),
     # prepend it to the text at embed time. This improves retrieval by adding document-level
     # context to each chunk. Documents must NOT use the query_prefix here.
@@ -257,6 +302,10 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--max-chunks", type=int, default=None, help="Limit chunks (for testing)")
     parser.add_argument("--recreate", action="store_true", help="Delete and recreate collection if it exists")
+    parser.add_argument(
+        "--incremental", action="store_true",
+        help="Skip chunks whose text hash matches the existing Qdrant payload (fast re-ingest for weekly sync)",
+    )
     args = parser.parse_args()
 
     if not args.input.exists():
@@ -287,7 +336,7 @@ def main() -> None:
     client = get_qdrant_client(args.qdrant, args.api_key)
     ensure_collection(client, args.collection, vector_dim, recreate=args.recreate)
 
-    n = ingest_chunks(chunks, dense_model, sparse_model, client, args.collection, args.batch_size)
+    n = ingest_chunks(chunks, dense_model, sparse_model, client, args.collection, args.batch_size, incremental=args.incremental)
     log.info("Done. Upserted %d points into '%s'", n, args.collection)
 
     info = client.get_collection(args.collection)

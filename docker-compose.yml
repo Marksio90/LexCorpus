@@ -2,11 +2,12 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: lexcorpus-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
+    # Ports deliberately NOT exposed to the host — Qdrant is only reachable
+    # from within the Docker network by the api, ingest, and worker services.
     volumes:
       - ./data/qdrant:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:6333/healthz"]
@@ -153,6 +154,7 @@ services:
     container_name: lexcorpus-ingest
     environment:
       - QDRANT_PATH=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
       - QDRANT_COLLECTION=lexcorpus
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
       - LOCAL_MODEL_PATH=${LOCAL_MODEL_PATH:-}
@@ -220,6 +222,7 @@ services:
       - "8000:8000"
     environment:
       - QDRANT_PATH=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
       - QDRANT_COLLECTION=lexcorpus
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
@@ -306,6 +309,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
       - QDRANT_PATH=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
     depends_on:
       redis:

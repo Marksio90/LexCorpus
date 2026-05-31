@@ -53,10 +53,9 @@ _LOCAL_MODEL_IS_BIELIK = LOCAL_MODEL_PATH and "bielik" in (LOCAL_MODEL_PATH or "
 
 # ── Global model state ────────────────────────────────────────────────────────
 _retriever = None
-_local_model = None
+_llm_provider = None       # active LLMProvider instance (set by init_llm_provider)
+_local_model = None        # kept for health-check compatibility (_local_model is not None)
 _local_tokenizer = None
-_openai_client = None
-_vllm_client = None        # OpenAI-compatible client pointed at vLLM
 _pg_pool = None
 
 
@@ -95,66 +94,75 @@ def init_retriever():
     return _retriever
 
 
+def init_llm_provider():
+    """
+    Build and cache the active LLMProvider based on configuration.
+
+    Priority (highest to lowest):
+      1. LocalTransformersProvider  — if LOCAL_MODEL_PATH is set
+      2. VLLMProvider               — if VLLM_ENABLED=true
+      3. OpenAIProvider             — if OPENAI_API_KEY is set
+
+    If multiple backends are configured, they are chained in a FallbackProvider
+    so the next in priority is tried automatically if the primary fails.
+    """
+    global _llm_provider, _local_model, _local_tokenizer
+    if _llm_provider is not None:
+        return _llm_provider
+
+    from api.llm_providers import (
+        FallbackProvider, LocalTransformersProvider, OpenAIProvider, VLLMProvider,
+    )
+
+    providers = []
+
+    if LOCAL_MODEL_PATH:
+        try:
+            local = LocalTransformersProvider(
+                LOCAL_MODEL_PATH,
+                is_bielik="bielik" in LOCAL_MODEL_PATH.lower(),
+            )
+            # Keep references for backward-compat health check in main.py
+            _local_model = local._model
+            _local_tokenizer = local._tokenizer
+            providers.append(local)
+        except Exception as exc:
+            log.warning("Failed to load local model '%s': %s", LOCAL_MODEL_PATH, exc)
+
+    if VLLM_ENABLED:
+        providers.append(VLLMProvider(VLLM_BASE_URL, VLLM_MODEL))
+        log.info("vLLM provider configured (base_url=%s, model=%s)", VLLM_BASE_URL, VLLM_MODEL)
+
+    if OPENAI_API_KEY:
+        providers.append(OpenAIProvider(OPENAI_API_KEY, OPENAI_MODEL))
+        log.info("OpenAI provider configured (model=%s)", OPENAI_MODEL)
+
+    if not providers:
+        log.warning("No LLM provider configured — set OPENAI_API_KEY or LOCAL_MODEL_PATH")
+        return None
+
+    _llm_provider = providers[0] if len(providers) == 1 else FallbackProvider(providers)
+    log.info("LLM provider ready: %s", _llm_provider.model_id)
+    return _llm_provider
+
+
+def get_llm_provider():
+    """Return the cached LLMProvider, initializing it if necessary."""
+    if _llm_provider is None:
+        return init_llm_provider()
+    return _llm_provider
+
+
 def init_local_model():
-    global _local_model, _local_tokenizer
-    if not LOCAL_MODEL_PATH:
-        return None, None
-    if _local_model is not None:
-        return _local_model, _local_tokenizer
-
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    log.info("Loading local model from %s …", LOCAL_MODEL_PATH)
-    try:
-        _local_tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
-        _local_model = AutoModelForCausalLM.from_pretrained(
-            LOCAL_MODEL_PATH,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-        _local_model.eval()
-        log.info("Local model loaded")
-    except Exception as exc:
-        log.warning("Failed to load local model: %s", exc)
-        _local_model = None
-        _local_tokenizer = None
+    """Backward-compatible wrapper — delegates to init_llm_provider()."""
+    init_llm_provider()
     return _local_model, _local_tokenizer
 
 
 def init_openai():
-    global _openai_client
-    if not OPENAI_API_KEY:
-        return None
-    if _openai_client is not None:
-        return _openai_client
-
-    from openai import OpenAI
-    _openai_client = OpenAI(api_key=OPENAI_API_KEY)
-    log.info("OpenAI client initialized (model: %s)", OPENAI_MODEL)
-    return _openai_client
-
-
-def init_vllm_client():
-    """
-    Return an OpenAI-compatible client pointed at the vLLM inference server.
-
-    vLLM exposes the same REST API as OpenAI, so we use the standard openai
-    library with a custom base_url. A dummy api_key is required by the library
-    even though vLLM doesn't enforce authentication.
-    """
-    global _vllm_client
-    if _vllm_client is not None:
-        return _vllm_client
-
-    from openai import OpenAI
-    _vllm_client = OpenAI(
-        base_url=VLLM_BASE_URL,
-        api_key="vllm-no-auth",   # vLLM doesn't require a real key
-        timeout=120.0,             # longer timeout for first-token latency on large models
-    )
-    log.info("vLLM client initialized (base_url=%s, model=%s)", VLLM_BASE_URL, VLLM_MODEL)
-    return _vllm_client
+    """Backward-compatible wrapper — delegates to init_llm_provider()."""
+    init_llm_provider()
+    return None  # OpenAI client is now internal to OpenAIProvider
 
 
 async def get_pg_pool():
@@ -303,130 +311,22 @@ def resolve_publisher_filter(source_type_filter: str | None, publisher_filter: s
     return None
 
 
-def generate_with_local_model(prompt: str, max_new_tokens: int = 512) -> str:
-    import torch
-    model, tokenizer = _local_model, _local_tokenizer
-
-    if _LOCAL_MODEL_IS_BIELIK and hasattr(tokenizer, "apply_chat_template"):
-        # Bielik-11B-v2+ uses standard chat template (compatible with ChatML / Mistral format)
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ]
-        try:
-            full_prompt = tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        except Exception:
-            full_prompt = f"<s>[INST] {SYSTEM_PROMPT}\n\n{prompt} [/INST]"
-    else:
-        full_prompt = f"### Instrukcja:\n{SYSTEM_PROMPT}\n\n### Pytanie:\n{prompt}\n\n### Odpowiedź:\n"
-
-    inputs = tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=4096)
-    inputs = {k: v.to(model.device) for k, v in inputs.items()}
-    with torch.no_grad():
-        output_ids = model.generate(
-            **inputs, max_new_tokens=max_new_tokens,
-            do_sample=True, temperature=0.3, top_p=0.9,
-            repetition_penalty=1.1,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    generated_ids = output_ids[0][inputs["input_ids"].shape[1]:]
-    return tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
-
-
-def generate_with_openai(prompt: str) -> str:
-    """
-    Generate an answer using either vLLM (when VLLM_ENABLED=true) or the real
-    OpenAI API. Both endpoints are OpenAI-API-compatible, so the same call works
-    for both. vLLM is preferred when available because it runs locally and uses
-    the fine-tuned Bielik model.
-    """
-    if VLLM_ENABLED:
-        client = init_vllm_client()
-        model = VLLM_MODEL
-        source = f"vllm:{VLLM_BASE_URL}"
-    else:
-        client = init_openai()
-        model = OPENAI_MODEL
-        source = "openai"
-
-    if client is None:
-        return (
-            "Przepraszam, brak skonfigurowanego modelu językowego. "
-            "Ustaw OPENAI_API_KEY lub włącz VLLM_ENABLED=true."
-        )
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            max_tokens=1024,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as exc:
-        log.error("Generation failed via %s: %s", source, exc)
-        # If vLLM fails and OpenAI key is available, fall back gracefully
-        if VLLM_ENABLED and OPENAI_API_KEY:
-            log.warning("Falling back to OpenAI API after vLLM failure")
-            fallback_client = init_openai()
-            if fallback_client is not None:
-                try:
-                    response = fallback_client.chat.completions.create(
-                        model=OPENAI_MODEL,
-                        max_tokens=1024,
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": prompt},
-                        ],
-                    )
-                    return response.choices[0].message.content.strip()
-                except Exception as exc2:
-                    log.error("OpenAI fallback also failed: %s", exc2)
-        raise
-
-
 def generate_answer(prompt: str) -> tuple[str, str]:
     """
-    Generate an answer using the best available model.
+    Generate an answer using the active LLMProvider.
 
-    Priority order:
-    1. Local transformers model (if LOCAL_MODEL_PATH is set and model loaded)
-    2. vLLM inference server (if VLLM_ENABLED=true)
-    3. OpenAI API (fallback)
-
-    Returns (answer_text, model_identifier) where model_identifier is shown
-    in the API response so the caller knows which backend was used.
+    Returns (answer_text, model_identifier). Backed by FallbackProvider so
+    the next configured backend is tried automatically if the primary fails.
     """
-    if _local_model is not None:
-        try:
-            return generate_with_local_model(prompt), LOCAL_MODEL_PATH or "local-model"
-        except Exception as exc:
-            log.warning("Local model failed, falling back: %s", exc)
-
-    if VLLM_ENABLED:
-        try:
-            return generate_with_openai(prompt), f"vllm:{VLLM_MODEL}"
-        except Exception as exc:
-            log.warning("vLLM generation failed, falling back to OpenAI: %s", exc)
-            # generate_with_openai already attempted the fallback internally,
-            # so if we're here the exception propagated — try OpenAI directly.
-            if OPENAI_API_KEY:
-                client = init_openai()
-                if client is not None:
-                    response = client.chat.completions.create(
-                        model=OPENAI_MODEL, max_tokens=1024,
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": prompt},
-                        ],
-                    )
-                    return response.choices[0].message.content.strip(), OPENAI_MODEL
-            raise
-
-    return generate_with_openai(prompt), OPENAI_MODEL
+    provider = get_llm_provider()
+    if provider is None:
+        return (
+            "Przepraszam, brak skonfigurowanego modelu językowego. "
+            "Ustaw OPENAI_API_KEY lub LOCAL_MODEL_PATH.",
+            "none",
+        )
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    return provider.generate(messages)

@@ -36,6 +36,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "scikit-learn>=1.4.0",
     "numpy>=1.26.0",
+    "prometheus-fastapi-instrumentator>=6.1.0",
 ]
 
 [project.optional-dependencies]
