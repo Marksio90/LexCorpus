@@ -339,6 +339,9 @@ def fetch_year_range(
                 break
 
             page += 1
+            if MAX_PAGES and page >= MAX_PAGES:
+                stop_reason = f"max_pages ({MAX_PAGES}) reached"
+                break
             time.sleep(delay)
 
     log.info("Done. Saved %d interpretations to %s (%s)", saved, out_file, stop_reason or "finished")
