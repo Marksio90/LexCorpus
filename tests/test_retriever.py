@@ -7,8 +7,7 @@ for mod in ("fastembed", "fastembed.sparse", "fastembed.sparse.bm25",
             "sentence_transformers"):
     sys.modules.setdefault(mod, MagicMock())
 
-import pytest
-from rag.retriever import _route_query, RetrievedChunk
+from rag.retriever import _route_query, RetrievedChunk  # noqa: E402
 
 
 class TestRouteQuery:

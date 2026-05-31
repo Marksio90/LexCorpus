@@ -287,8 +287,6 @@ def build_training_args(cfg: dict) -> TrainingArguments:
 
 def merge_and_save(model, tokenizer, cfg: dict) -> None:
     """Merge LoRA weights into the base model and save."""
-    from peft import PeftModel
-
     merged_dir = cfg["merge"]["merged_output_dir"]
     log.info("Merging LoRA weights into base model …")
     merged_model = model.merge_and_unload()
@@ -401,11 +399,9 @@ def main() -> None:
             capture_output=True, text=True, timeout=300,
         )
         if result.returncode == 0:
-            log.info("Evaluation complete:
-%s", result.stdout[-2000:])
+            log.info("Evaluation complete:\n%s", result.stdout[-2000:])
         else:
-            log.warning("Evaluation failed (non-blocking):
-%s", result.stderr[-1000:])
+            log.warning("Evaluation failed (non-blocking):\n%s", result.stderr[-1000:])
 
     log.info("All done.")
 

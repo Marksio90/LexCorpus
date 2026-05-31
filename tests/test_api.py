@@ -10,14 +10,13 @@ for mod in ("fastembed", "fastembed.sparse", "fastembed.sparse.bm25",
             "sentence_transformers", "tqdm", "asyncpg", "redis"):
     sys.modules.setdefault(mod, MagicMock())
 
-import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch  # noqa: E402
 
-import pytest
-from fastapi.testclient import TestClient
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
-from api.main import app
-from rag.retriever import RetrievedChunk
+from api.main import app  # noqa: E402
+from rag.retriever import RetrievedChunk  # noqa: E402
 
 
 def _make_chunk(**kwargs) -> RetrievedChunk:

@@ -16,7 +16,7 @@ from api.result_cache import get_cache
 from api.dependencies import (
     is_internal_request, verify_api_token, client_ip, check_rate_limit,
     init_retriever, generate_answer, get_llm_provider, build_prompt, chunk_to_source,
-    compute_confidence, resolve_publisher_filter, OPENAI_API_KEY, OPENAI_MODEL,
+    compute_confidence, resolve_publisher_filter,
     SYSTEM_PROMPT,
 )
 

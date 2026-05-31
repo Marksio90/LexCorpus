@@ -170,7 +170,6 @@ def main() -> None:
         log.info("[%d/%d] %s", q["id"], len(questions), q["question"][:70])
 
         # Retrieval
-        from rag.retriever import QueryComplexity
         complexity = retriever._classify_complexity(q["question"])
         chunks = retriever.retrieve(q["question"], top_k=args.top_k)
         context = retriever.format_context(chunks, max_chars=3000)

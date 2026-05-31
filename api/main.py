@@ -25,10 +25,9 @@ from fastapi.responses import JSONResponse
 
 from api.schemas import ErrorResponse, HealthResponse
 from api.logging_config import configure_logging
-from api.result_cache import get_cache
 from api.dependencies import (
     init_retriever, init_llm_provider,
-    QDRANT_COLLECTION, EMBEDDING_MODEL,
+    QDRANT_COLLECTION,
 )
 
 try:
@@ -94,11 +93,11 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 # ── Include routers ────────────────────────────────────────────────────────────
-from api.routers.ask import router as ask_router
-from api.routers.search import router as search_router
-from api.routers.sync import router as sync_router
-from api.routers.private import router as private_router
-from api.routers.agent import router as agent_router
+from api.routers.ask import router as ask_router  # noqa: E402
+from api.routers.search import router as search_router  # noqa: E402
+from api.routers.sync import router as sync_router  # noqa: E402
+from api.routers.private import router as private_router  # noqa: E402
+from api.routers.agent import router as agent_router  # noqa: E402
 
 app.include_router(ask_router)
 app.include_router(search_router)

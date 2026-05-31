@@ -178,7 +178,7 @@ def fetch_judgments(
 
                 # Find next page link
                 links = data.get("links") or []
-                next_url = next((l["href"] for l in links if l.get("rel") == "next"), None)
+                next_url = next((lnk["href"] for lnk in links if lnk.get("rel") == "next"), None)
 
                 time.sleep(0.2)  # be polite to SAOS
 

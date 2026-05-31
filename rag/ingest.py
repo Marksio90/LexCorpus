@@ -206,8 +206,8 @@ def build_payload(chunk: dict) -> dict:
     if chunk.get("ctx_prefix"):
         payload["ctx_prefix"] = chunk["ctx_prefix"]
     # EuroVoc multi-label classification — list of domain strings.
-    # Populated by scripts/classify_eurovoc.py. Stored as a keyword-indexed
-    # array so Qdrant can filter on individual labels.
+    # Optional: pre-populate chunks with eurovoc_labels before ingestion.
+    # Stored as a keyword-indexed array so Qdrant can filter on individual labels.
     eurovoc_labels = chunk.get("eurovoc_labels")
     if eurovoc_labels and isinstance(eurovoc_labels, list):
         payload["eurovoc_labels"] = [str(lbl) for lbl in eurovoc_labels]
