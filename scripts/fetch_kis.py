@@ -210,7 +210,7 @@ def build_record(item: dict) -> dict | None:
 
     # Skip records with no useful text
     if not raw_text or len(raw_text) < 50:
-        log.debug("Skipping %s — no useful raw_text", interp_id)
+        log.warning("Skipping %s (sig=%s) — raw_text too short (%d chars)", interp_id, signature, len(raw_text))
         return None
 
     # Author
@@ -270,7 +270,7 @@ def fetch_year_range(
                     pass
         log.info("Resuming — %d interpretations already saved", len(saved_ids))
 
-    log.info("Scanning KIS interpretations via EUREKA %d → %d …", year_from, year_to)
+    log.info("Scanning KIS interpretations via EUREKA %d-%d ...", year_from, year_to)
 
     saved = len(saved_ids)
     page = 0
@@ -299,6 +299,7 @@ def fetch_year_range(
 
             for item in tqdm(items, desc=f"Page {page + 1}", leave=False):
                 if max_items and saved >= max_items:
+                    stop_reason = f"max_items ({max_items}) reached"
                     break
 
                 record = build_record(item)
@@ -324,7 +325,7 @@ def fetch_year_range(
                     break
 
                 if record_year and record_year > year_to:
-                    # Skip future years
+                    log.debug("Skipping %s — year %s > year_to %d", record_id, record_year, year_to)
                     continue
 
                 fout.write(json.dumps(record, ensure_ascii=False) + "\n")
