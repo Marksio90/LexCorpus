@@ -235,6 +235,7 @@ services:
       - SYNC_SINCE_DAYS=${SYNC_SINCE_DAYS:-8}
       - SYNC_SAOS_OUTPUT=/app/data/raw
       - SYNC_PROCESSED_DIR=/app/data/processed
+      - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       qdrant:
         condition: service_healthy
@@ -246,10 +247,11 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
-      interval: 15s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/ping')\""]
+      interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 300s
 
   frontend:
     build:
@@ -299,6 +301,7 @@ services:
       - QDRANT_PATH=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sdadas/mmlw-retrieval-roberta-large-v2}
+      - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       redis:
         condition: service_healthy
