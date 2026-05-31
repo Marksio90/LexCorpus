@@ -42,12 +42,6 @@ from sentence_transformers import CrossEncoder, SentenceTransformer
 from rag.adaptive_rag import ComplexityRouter, QueryComplexity  # noqa: F401 (re-exported)
 from rag.crag import CRAGGate
 
-# Optional ColBERT reranker — imported lazily to avoid hard dependency at module load
-try:
-    from rag.colbert_retriever import ColBERTRetriever as _ColBERTRetriever
-except ImportError:
-    _ColBERTRetriever = None  # type: ignore[assignment,misc]
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -135,7 +129,6 @@ class LegalRetriever:
         query_prefix: str = DEFAULT_QUERY_PREFIX,
         crag_enabled: bool = True,
         adaptive_rag: bool = True,
-        colbert_reranker: "_ColBERTRetriever | None" = None,
     ) -> None:
         self.model_name = model_name
         self.rerank_model_name = rerank_model_name
@@ -148,9 +141,6 @@ class LegalRetriever:
         self.query_prefix = query_prefix       # prepended to queries at embed time (NOT to docs)
         self.crag_enabled = crag_enabled       # CRAG: filter low-confidence retrieved chunks
         self.adaptive_rag = adaptive_rag       # Adaptive RAG: route by query complexity
-        # ColBERT late-interaction reranker — applied after cross-encoder (or alone when
-        # cross-encoder is disabled). Injected via rag.colbert_retriever.ColBERTRetriever.
-        self.colbert_reranker = colbert_reranker
         self._dense_model: SentenceTransformer | None = None
         self._sparse_model: Bm25 | None = None
         self._rerank_model: CrossEncoder | None = None
@@ -346,8 +336,8 @@ class LegalRetriever:
             eurovoc_domain: Filter by EuroVoc domain label(s). Pass a single string
                 (e.g. "prawo pracy") or a list of strings for OR matching. Only chunks
                 whose eurovoc_labels field contains at least one of the given domains
-                are returned. Requires chunks to have been classified by
-                scripts/classify_eurovoc.py before ingestion.
+                are returned. Requires chunks to have eurovoc_labels populated
+                before ingestion.
 
                 Example:
                     retriever.retrieve(
@@ -515,10 +505,6 @@ class LegalRetriever:
             if has_children:
                 results = self._lift_to_parent(results)
             results = self._expand_context(results) if (expand_context and not has_children) else results
-            # ── ColBERT reranking (optional, no cross-encoder path) ───────────
-            if self.colbert_reranker is not None:
-                log.debug("Applying ColBERT reranking (no-CE path) to %d results", len(results))
-                results = self.colbert_reranker.rerank(query, results, top_k)
             return results
 
         # ── Cross-encoder re-ranking ───────────────────────────────────────────
@@ -540,14 +526,6 @@ class LegalRetriever:
         if has_children:
             results = self._lift_to_parent(results)
         results = self._expand_context(results) if (expand_context and not has_children) else results
-
-        # ── ColBERT late-interaction reranking (optional final pass) ──────────
-        # Applied after cross-encoder to provide a complementary token-level signal.
-        # ColBERT's MaxSim handles Polish morphology better than single-vector CE.
-        # The top_k pool from CE is re-scored; CE ordering may be partially re-shuffled.
-        if self.colbert_reranker is not None:
-            log.debug("Applying ColBERT reranking to %d CE results", len(results))
-            results = self.colbert_reranker.rerank(query, results, top_k)
 
         return results
 

@@ -56,12 +56,7 @@ rag/
   ingest.py            embed + store to Qdrant
   adaptive_rag.py      query complexity classifier (TRIVIAL / SIMPLE / COMPLEX)
   crag.py              Corrective RAG — filters low-score chunks before LLM
-  colbert_retriever.py optional ColBERT reranker (lazy-loaded)
   agent.py             ReAct agent loop
-  legal_graph.py       graph-based retrieval (experimental)
-  raptor.py            RAPTOR hierarchical summarization (experimental)
-  sat_graph.py         SAT-based reasoning graph (experimental)
-  ner.py               NER for Polish legal acts
 
 scripts/
   fetch_isap.py                   ISAP scraper
@@ -69,12 +64,14 @@ scripts/
   fetch_eurlex.py                 EUR-Lex scraper
   fetch_kis.py                    KIS scraper
   preprocess.py                   chunker + SAOS section detector
+  detect_changes.py               act change detection (used by api/sync.py)
+  ingest_sample.py                synthetic sample data for CI eval
   run_eval.py                     RAG evaluation on golden question set
   generate_training_data.py       synthetic Q&A distillation (GPT-4o-mini → chat pairs)
-  generate_contextual_chunks.py   Contextual Retrieval — LLM-enriched chunk prefixes
+  generate_contextual_chunks.py   optional: LLM-enriched chunk prefixes (Contextual Retrieval)
 
 training/
-  train.py             QLoRA fine-tuning, supports chat-format and legacy instruction-format
+  train.py             QLoRA fine-tuning (Bielik-7B)
   config.yaml          hyperparameters (LoRA r=16, 4-bit NF4, Bielik-7B)
   Dockerfile.train     CUDA 12.1 container
 
@@ -92,8 +89,7 @@ nginx/        nginx.conf for production reverse proxy
 5. **CRAG** — cross-encoder pre-filter: drops chunks below `CRAG_LOW_THRESHOLD` score
 6. **Dedup** — by `(act_id, chunk_index)`, keep highest score
 7. **Cross-encoder rerank** — `sdadas/polish-reranker-large-ranknet` (best Polish reranker, PIRB NDCG@10: 62.65)
-8. **ColBERT rerank** — optional, lazy-loaded via `COLBERT_ENABLED`
-9. **Context expand** — fetches chunk±1 from Qdrant for surrounding context
+8. **Context expand** — fetches chunk±1 from Qdrant for surrounding context
 
 ## API endpoints (api/main.py + routers/)
 

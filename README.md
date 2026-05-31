@@ -62,8 +62,7 @@ docker compose up
 5. **CRAG (Corrective RAG)** — filtruje chunki o niskim score przed LLM (zapobiega cytowaniu złych ustaw)
 6. **Dedup** — po `(act_id, chunk_index)`, najwyższy score wygrywa
 7. **Cross-encoder rerank** — `sdadas/polish-reranker-large-ranknet` (PIRB NDCG@10: 62.65)
-8. **ColBERT rerank** — opcjonalny, ładowany leniwie
-9. **Context expand** — pobiera chunk±1 z Qdrant dla lepszego kontekstu
+8. **Context expand** — pobiera chunk±1 z Qdrant dla lepszego kontekstu
 
 ---
 
@@ -89,12 +88,7 @@ rag/
   ingest.py            embed + store do Qdrant
   adaptive_rag.py      klasyfikacja złożoności zapytania
   crag.py              Corrective RAG
-  colbert_retriever.py opcjonalny reranker ColBERT
   agent.py             agent loop (ReAct)
-  legal_graph.py       graph-based retrieval (eksperymentalny)
-  raptor.py            RAPTOR hierarchical summarization (eksperymentalny)
-  sat_graph.py         SAT-based reasoning graph (eksperymentalny)
-  ner.py               NER dla polskich aktów prawnych
 
 scripts/
   fetch_isap.py                   ISAP scraper
@@ -102,12 +96,14 @@ scripts/
   fetch_eurlex.py                 EUR-Lex scraper
   fetch_kis.py                    KIS scraper (interpretacje podatkowe MF)
   preprocess.py                   chunker + sekcje SAOS
+  detect_changes.py               wykrywanie zmian aktów (używane przez sync)
+  ingest_sample.py                syntetyczne dane do testów CI
   run_eval.py                     ewaluacja RAG (45 pytań golden set)
   generate_training_data.py       synteza danych Q&A przez GPT-4o-mini
-  generate_contextual_chunks.py   Contextual Retrieval — enrichment chunków LLM
+  generate_contextual_chunks.py   opcjonalny enrichment chunków (Contextual Retrieval)
 
 training/
-  train.py             QLoRA fine-tuning (Bielik-7B / Mistral-7B)
+  train.py             QLoRA fine-tuning (Bielik-7B)
   config.yaml          hiperparametry (r=16, 4-bit NF4)
 
 frontend/              Next.js 14 + TypeScript + Tailwind
