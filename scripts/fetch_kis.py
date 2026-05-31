@@ -42,13 +42,16 @@ EUREKA_API_BASE = os.environ.get(
 )
 SEARCH_ENDPOINT = f"{EUREKA_API_BASE}/api/public/v1/wyszukiwarka/informacje/"
 
-PAGE_SIZE = 100
+PAGE_SIZE = 200
 MAX_RETRIES = 5
 INITIAL_BACKOFF = 2.0
 REQUEST_TIMEOUT = 30.0
 
 # Rate-limit: be polite to MF servers
-DELAY_BETWEEN_REQUESTS = float(os.environ.get("KIS_DELAY", "0.5"))
+DELAY_BETWEEN_REQUESTS = float(os.environ.get("KIS_DELAY", "0.3"))
+
+# Max pages to fetch (safety limit to avoid extremely long runs)
+MAX_PAGES = int(os.environ.get("KIS_MAX_PAGES", "0"))  # 0 = unlimited
 
 HEADERS = {
     "User-Agent": (
