@@ -48,7 +48,15 @@ ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://local
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("LexCorpus API starting …")
     try:
-        init_retriever()
+        retriever = init_retriever()
+        # Eager-load embedding, sparse and rerank models so first request is fast
+        _ = retriever.dense_model
+        log.info("Dense model loaded")
+        _ = retriever.sparse_model
+        log.info("Sparse model loaded")
+        if retriever.rerank:
+            _ = retriever.rerank_model
+            log.info("Rerank model loaded")
     except Exception as exc:
         log.warning("Retriever warmup failed (will retry on first request): %s", exc)
     try:

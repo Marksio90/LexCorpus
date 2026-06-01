@@ -208,6 +208,8 @@ services:
     container_name: lexcorpus-api
     ports:
       - "8000:8000"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
     environment:
       - QDRANT_PATH=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:?QDRANT_API_KEY is required}
@@ -295,6 +297,7 @@ services:
     volumes:
       - ./data:/app/data
       - private_data:/app/data/private
+      - hf_cache:/root/.cache/huggingface
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-lexcorpus}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lexcorpus}
@@ -363,3 +366,4 @@ services:
 volumes:
   postgres_data:
   private_data:
+  hf_cache:
